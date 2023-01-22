@@ -29,7 +29,6 @@
 
 #define SKILLS_MAX_USES_PER_DAY 3
 
-#define REPAIRABLE_DAMAGE_FLAGS_LENGTH 5
 #define HEALABLE_DAMAGE_FLAGS_LENGTH 5
 
 static int skillLevelCost(int a1);
@@ -449,8 +448,8 @@ int skill_use(Object* obj, Object* a2, int skill, int criticalChanceModifier)
     if (obj == obj_dude) {
         if (skill == SKILL_FIRST_AID || skill == SKILL_DOCTOR) {
             int healerRank = perk_level(PERK_HEALER);
-            minimumHpToHeal = 4 * healerRank;
-            maximumHpToHeal = 10 * healerRank;
+            minimumHpToHeal = 2 * healerRank;
+            maximumHpToHeal = 5 * healerRank;
         }
     }
 
@@ -515,8 +514,6 @@ int skill_use(Object* obj, Object* a2, int skill, int criticalChanceModifier)
                     display_print(text);
                 }
 
-                a2->data.critter.combat.maneuver &= ~CRITTER_MANUEVER_FLEEING;
-
                 skill_use_slot_add(SKILL_FIRST_AID);
 
                 v1 = 1;
@@ -524,6 +521,9 @@ int skill_use(Object* obj, Object* a2, int skill, int criticalChanceModifier)
                 if (a2 == obj_dude) {
                     intface_update_hit_points(true);
                 }
+
+                scr_exec_map_update_scripts();
+                palette_fade_to(cmap);
             } else {
                 // You fail to do any healing.
                 messageListItem.num = 503;
@@ -534,9 +534,6 @@ int skill_use(Object* obj, Object* a2, int skill, int criticalChanceModifier)
                 sprintf(text, messageListItem.text, hpToHeal);
                 display_print(text);
             }
-
-            scr_exec_map_update_scripts();
-            palette_fade_to(cmap);
         } else {
             if (obj == obj_dude) {
                 // 501: You look healty already
@@ -592,7 +589,7 @@ int skill_use(Object* obj, Object* a2, int skill, int criticalChanceModifier)
             if (critter_body_type(a2) != BODY_TYPE_ROBOTIC && critter_is_crippled(a2)) {
                 // Damage flags which can be healed using "Doctor" skill.
                 //
-                // 0x4AA304
+                // 0x498160
                 static const int flags[HEALABLE_DAMAGE_FLAGS_LENGTH] = {
                     DAM_BLIND,
                     DAM_CRIP_ARM_LEFT,
@@ -621,7 +618,6 @@ int skill_use(Object* obj, Object* a2, int skill, int criticalChanceModifier)
 
                         if (roll == ROLL_SUCCESS || roll == ROLL_CRITICAL_SUCCESS) {
                             a2->data.critter.combat.results &= ~flags[index];
-                            a2->data.critter.combat.maneuver &= ~CRITTER_MANUEVER_FLEEING;
 
                             // 520: You heal your %s.
                             // 521: You heal the %s.
@@ -680,8 +676,6 @@ int skill_use(Object* obj, Object* a2, int skill, int criticalChanceModifier)
                     skill_use_slot_add(SKILL_DOCTOR);
                 }
 
-                a2->data.critter.combat.maneuver &= ~CRITTER_MANUEVER_FLEEING;
-
                 if (a2 == obj_dude) {
                     intface_update_hit_points(true);
                 }
@@ -738,183 +732,31 @@ int skill_use(Object* obj, Object* a2, int skill, int criticalChanceModifier)
         scripts_request_steal_container(obj, a2);
         break;
     case SKILL_TRAPS:
-        messageListItem.num = 551; // You fail to find any traps.
+        // You fail to find any traps.
+        messageListItem.num = 551;
         if (message_search(&skill_message_file, &messageListItem)) {
             display_print(messageListItem.text);
         }
 
         return -1;
     case SKILL_SCIENCE:
-        messageListItem.num = 552; // You fail to learn anything.
+        // You fail to learn anything.
+        messageListItem.num = 552;
         if (message_search(&skill_message_file, &messageListItem)) {
             display_print(messageListItem.text);
         }
 
         return -1;
     case SKILL_REPAIR:
-        if (critter_body_type(a2) != BODY_TYPE_ROBOTIC) {
-            // You cannot repair that.
-            messageListItem.num = 553;
-            if (message_search(&skill_message_file, &messageListItem)) {
-                display_print(messageListItem.text);
-            }
-            return -1;
+        // You cannot repair that.
+        messageListItem.num = 553;
+        if (message_search(&skill_message_file, &messageListItem)) {
+            display_print(messageListItem.text);
         }
-
-        if (skill_use_slot_available(SKILL_REPAIR) == -1) {
-            // 590: You've taxed your ability with that skill. Wait a while.
-            // 591: You're too tired.
-            // 592: The strain might kill you.
-            messageListItem.num = 590 + roll_random(0, 2);
-            if (message_search(&skill_message_file, &messageListItem)) {
-                display_print(messageListItem.text);
-            }
-            return -1;
-        }
-
-        if (critter_is_dead(a2)) {
-            // You got it?
-            messageListItem.num = 1101;
-            if (message_search(&skill_message_file, &messageListItem)) {
-                display_print(messageListItem.text);
-            }
-            break;
-        }
-
-        if (currentHp < maximumHp || critter_is_crippled(a2)) {
-            // Damage flags which can be repaired using "Repair" skill.
-            //
-            // 0x4AA2F0
-            static const int flags[REPAIRABLE_DAMAGE_FLAGS_LENGTH] = {
-                DAM_BLIND,
-                DAM_CRIP_ARM_LEFT,
-                DAM_CRIP_ARM_RIGHT,
-                DAM_CRIP_LEG_RIGHT,
-                DAM_CRIP_LEG_LEFT,
-            };
-
-            palette_fade_to(black_palette);
-
-            for (int index = 0; index < REPAIRABLE_DAMAGE_FLAGS_LENGTH; index++) {
-                if ((a2->data.critter.combat.results & flags[index]) != 0) {
-                    damageHealingAttempts++;
-
-                    int roll = skill_result(obj, skill, criticalChance, &hpToHeal);
-
-                    // 530: damaged eye
-                    // 531: crippled left arm
-                    // 532: crippled right arm
-                    // 533: crippled right leg
-                    // 534: crippled left leg
-                    messageListItem.num = 530 + index;
-                    if (!message_search(&skill_message_file, &messageListItem)) {
-                        return -1;
-                    }
-
-                    MessageListItem prefix;
-
-                    if (roll == ROLL_SUCCESS || roll == ROLL_CRITICAL_SUCCESS) {
-                        a2->data.critter.combat.results &= ~flags[index];
-                        a2->data.critter.combat.maneuver &= ~CRITTER_MANUEVER_FLEEING;
-
-                        // 520: You heal your %s.
-                        // 521: You heal the %s.
-                        prefix.num = (a2 == obj_dude ? 520 : 521);
-                        skill_use_slot_add(SKILL_REPAIR);
-
-                        v1 = 1;
-                        v2 = 1;
-                    } else {
-                        // 525: You fail to heal your %s.
-                        // 526: You fail to heal the %s.
-                        prefix.num = (a2 == obj_dude ? 525 : 526);
-                    }
-
-                    if (!message_search(&skill_message_file, &prefix)) {
-                        return -1;
-                    }
-
-                    sprintf(text, prefix.text, messageListItem.text);
-                    display_print(text);
-
-                    show_skill_use_messages(obj, skill, a2, v1, criticalChanceModifier);
-                    giveExp = false;
-                }
-            }
-
-            int skillValue = skill_level(obj, skill);
-            int roll = roll_check(skillValue, criticalChance, &hpToHeal);
-
-            if (roll == ROLL_SUCCESS || roll == ROLL_CRITICAL_SUCCESS) {
-                hpToHeal = roll_random(minimumHpToHeal + 4, maximumHpToHeal + 10);
-                critter_adjust_hits(a2, hpToHeal);
-
-                if (obj == obj_dude) {
-                    // You heal %d hit points.
-                    messageListItem.num = 500;
-                    if (!message_search(&skill_message_file, &messageListItem)) {
-                        return -1;
-                    }
-
-                    if (maximumHp - currentHp < hpToHeal) {
-                        hpToHeal = maximumHp - currentHp;
-                    }
-                    sprintf(text, messageListItem.text, hpToHeal);
-                    display_print(text);
-                }
-
-                if (!v2) {
-                    skill_use_slot_add(SKILL_REPAIR);
-                }
-
-                a2->data.critter.combat.maneuver &= ~CRITTER_MANUEVER_FLEEING;
-
-                if (a2 == obj_dude) {
-                    intface_update_hit_points(true);
-                }
-
-                v1 = 1;
-                show_skill_use_messages(obj, skill, a2, v1, criticalChanceModifier);
-                scr_exec_map_update_scripts();
-                palette_fade_to(cmap);
-
-                giveExp = false;
-            } else {
-                // You fail to do any healing.
-                messageListItem.num = 503;
-                if (!message_search(&skill_message_file, &messageListItem)) {
-                    return -1;
-                }
-
-                sprintf(text, messageListItem.text, hpToHeal);
-                display_print(text);
-
-                scr_exec_map_update_scripts();
-                palette_fade_to(cmap);
-            }
-        } else {
-            if (obj == obj_dude) {
-                // 501: You look healty already
-                // 502: %s looks healthy already
-                messageListItem.num = (a2 == obj_dude ? 501 : 502);
-                if (!message_search(&skill_message_file, &messageListItem)) {
-                    return -1;
-                }
-
-                sprintf(text, messageListItem.text, object_name(a2));
-                display_print(text);
-
-                giveExp = false;
-            }
-        }
-
-        if (obj == obj_dude) {
-            inc_game_time_in_seconds(1800 * damageHealingAttempts);
-        }
-
-        break;
+        return -1;
     default:
-        messageListItem.num = 510; // skill_use: invalid skill used.
+        // skill_use: invalid skill used.
+        messageListItem.num = 510;
         if (message_search(&skill_message_file, &messageListItem)) {
             debug_printf(messageListItem.text);
         }
