@@ -26,11 +26,10 @@ static bool cache_resize_array(Cache* cache, int newCapacity);
 static int cache_compare_make_room(const void* a1, const void* a2);
 static int cache_compare_reset_counter(const void* a1, const void* a2);
 
-// 0x510938
+// 0x4FEC7C
 static int lock_sound_ticker = 0;
 
-// cache_init
-// 0x41FCC0
+// 0x41E9C0
 bool cache_init(Cache* cache, CacheSizeProc* sizeProc, CacheReadProc* readProc, CacheFreeProc* freeProc, int maxSize)
 {
     if (!heap_init(&(cache->heap), maxSize)) {
@@ -56,8 +55,7 @@ bool cache_init(Cache* cache, CacheSizeProc* sizeProc, CacheReadProc* readProc, 
     return true;
 }
 
-// cache_exit
-// 0x41FD50
+// 0x41EA50
 bool cache_exit(Cache* cache)
 {
     if (cache == NULL) {
@@ -86,9 +84,7 @@ bool cache_exit(Cache* cache)
     return true;
 }
 
-// NOTE: Unused.
-//
-// 0x41FDC0
+// 0x41EAC0
 int cache_query(Cache* cache, int key)
 {
     int index;
@@ -104,7 +100,7 @@ int cache_query(Cache* cache, int key)
     return 1;
 }
 
-// 0x41FDE8
+// 0x41EAE8
 bool cache_lock(Cache* cache, int key, void** data, CacheEntry** cacheEntryPtr)
 {
     if (cache == NULL || data == NULL || cacheEntryPtr == NULL) {
@@ -159,7 +155,7 @@ bool cache_lock(Cache* cache, int key, void** data, CacheEntry** cacheEntryPtr)
     return true;
 }
 
-// 0x4200B8
+// 0x41EDB8
 bool cache_unlock(Cache* cache, CacheEntry* cacheEntry)
 {
     if (cache == NULL || cacheEntry == NULL) {
@@ -179,9 +175,7 @@ bool cache_unlock(Cache* cache, CacheEntry* cacheEntry)
     return true;
 }
 
-// NOTE: Unused.
-//
-// 0x4200EC
+// 0x41EDEC
 int cache_discard(Cache* cache, int key)
 {
     int index;
@@ -207,8 +201,7 @@ int cache_discard(Cache* cache, int key)
     return 1;
 }
 
-// cache_flush
-// 0x42012C
+// 0x41EE2C
 bool cache_flush(Cache* cache)
 {
     if (cache == NULL) {
@@ -235,9 +228,7 @@ bool cache_flush(Cache* cache)
     return true;
 }
 
-// NOTE: Unused.
-//
-// 0x420184
+// 0x41EE84
 int cache_size(Cache* cache, int* sizePtr)
 {
     if (cache == NULL) {
@@ -253,7 +244,7 @@ int cache_size(Cache* cache, int* sizePtr)
     return 1;
 }
 
-// 0x42019C
+// 0x41EE9C
 bool cache_stats(Cache* cache, char* dest)
 {
     if (cache == NULL || dest == NULL) {
@@ -265,9 +256,7 @@ bool cache_stats(Cache* cache, char* dest)
     return true;
 }
 
-// NOTE: Unused.
-//
-// 0x4201C0
+// 0x41EEC0
 int cache_create_list(Cache* cache, unsigned int a2, int** tagsPtr, int* tagsLengthPtr)
 {
     int cacheItemIndex;
@@ -350,9 +339,7 @@ int cache_create_list(Cache* cache, unsigned int a2, int** tagsPtr, int* tagsLen
     return 1;
 }
 
-// NOTE: Unused.
-//
-// 0x420384
+// 0x41F084
 int cache_destroy_list(int** tagsPtr)
 {
     if (tagsPtr == NULL) {
@@ -371,7 +358,7 @@ int cache_destroy_list(int** tagsPtr)
 
 // Fetches entry for the specified key into the cache.
 //
-// 0x4203AC
+// 0x41F0AC
 static bool cache_add(Cache* cache, int key, int* indexPtr)
 {
     CacheEntry* cacheEntry;
@@ -469,7 +456,7 @@ static bool cache_add(Cache* cache, int key, int* indexPtr)
     return false;
 }
 
-// 0x4205E8
+// 0x41F2E8
 static bool cache_insert(Cache* cache, CacheEntry* cacheEntry, int index)
 {
     // Ensure cache have enough space for new entry.
@@ -494,7 +481,7 @@ static bool cache_insert(Cache* cache, CacheEntry* cacheEntry, int index)
 // Returns 2 if entry already exists in cache, or 3 if entry does not exist. In
 // this case indexPtr represents insertion point.
 //
-// 0x420654
+// 0x41F354
 static int cache_find(Cache* cache, int key, int* indexPtr)
 {
     int length = cache->entriesLength;
@@ -533,9 +520,7 @@ static int cache_find(Cache* cache, int key, int* indexPtr)
     return 3;
 }
 
-// NOTE: Inlined.
-//
-// 0x4206C0
+// 0x41F3C0
 static int cache_create_item(CacheEntry** cacheEntryPtr)
 {
     *cacheEntryPtr = (CacheEntry*)mem_malloc(sizeof(**cacheEntryPtr));
@@ -549,7 +534,7 @@ static int cache_create_item(CacheEntry** cacheEntryPtr)
     return 0;
 }
 
-// 0x420708
+// 0x41F408
 static bool cache_init_item(CacheEntry* cacheEntry)
 {
     cacheEntry->key = 0;
@@ -562,9 +547,7 @@ static bool cache_init_item(CacheEntry* cacheEntry)
     return true;
 }
 
-// NOTE: Inlined.
-//
-// 0x420740
+// 0x41F440
 static bool cache_destroy_item(Cache* cache, CacheEntry* cacheEntry)
 {
     if (cacheEntry->data != NULL) {
@@ -576,7 +559,7 @@ static bool cache_destroy_item(Cache* cache, CacheEntry* cacheEntry)
     return true;
 }
 
-// 0x420764
+// 0x41F464
 static bool cache_unlock_all(Cache* cache)
 {
     Heap* heap = &(cache->heap);
@@ -595,7 +578,7 @@ static bool cache_unlock_all(Cache* cache)
     return true;
 }
 
-// 0x4207D4
+// 0x41F4D4
 static bool cache_reset_counter(Cache* cache)
 {
     if (cache == NULL) {
@@ -625,7 +608,7 @@ static bool cache_reset_counter(Cache* cache)
 
 // Prepare cache for storing new entry with the specified size.
 //
-// 0x42084C
+// 0x41F54C
 static bool cache_make_room(Cache* cache, int size)
 {
     if (size > cache->maxSize) {
@@ -701,7 +684,7 @@ static bool cache_make_room(Cache* cache, int size)
     return false;
 }
 
-// 0x42099C
+// 0x41F69C
 static bool cache_purge(Cache* cache)
 {
     for (int index = 0; index < cache->entriesLength; index++) {
@@ -732,7 +715,7 @@ static bool cache_purge(Cache* cache)
     return true;
 }
 
-// 0x420A40
+// 0x41F740
 static bool cache_resize_array(Cache* cache, int newCapacity)
 {
     if (newCapacity < cache->entriesLength) {
@@ -750,7 +733,7 @@ static bool cache_resize_array(Cache* cache, int newCapacity)
     return true;
 }
 
-// 0x420A74
+// 0x41F774
 static int cache_compare_make_room(const void* a1, const void* a2)
 {
     CacheEntry* v1 = *(CacheEntry**)a1;
@@ -779,7 +762,7 @@ static int cache_compare_make_room(const void* a1, const void* a2)
     return 0;
 }
 
-// 0x420AE8
+// 0x41F7E8
 static int cache_compare_reset_counter(const void* a1, const void* a2)
 {
     CacheEntry* v1 = *(CacheEntry**)a1;
