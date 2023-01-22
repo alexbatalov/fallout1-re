@@ -8,10 +8,10 @@
 #include "plib/gnw/mouse.h"
 #include "plib/gnw/text.h"
 
-// 0x51E404
+// 0x53A258
 static int last_button_winID = -1;
 
-// 0x6ADF40
+// 0x6AC2D0
 static RadioGroup btn_grp[RADIO_GROUP_LIST_CAPACITY];
 
 static Button* button_create(int win, int x, int y, int width, int height, int mouseEnterEventCode, int mouseExitEventCode, int mouseDownEventCode, int mouseUpEventCode, int flags, unsigned char* up, unsigned char* dn, unsigned char* hover);
@@ -19,7 +19,7 @@ static bool button_under_mouse(Button* button, Rect* rect);
 static int button_check_group(Button* button);
 static void button_draw(Button* button, Window* window, unsigned char* data, int a4, Rect* a5, int a6);
 
-// 0x4D8260
+// 0x4C4320
 int win_register_button(int win, int x, int y, int width, int height, int mouseEnterEventCode, int mouseExitEventCode, int mouseDownEventCode, int mouseUpEventCode, unsigned char* up, unsigned char* dn, unsigned char* hover, int flags)
 {
     Window* w = GNW_find(win);
@@ -46,7 +46,7 @@ int win_register_button(int win, int x, int y, int width, int height, int mouseE
     return button->id;
 }
 
-// 0x4D8308
+// 0x4C43C8
 int win_register_text_button(int win, int x, int y, int mouseEnterEventCode, int mouseExitEventCode, int mouseDownEventCode, int mouseUpEventCode, const char* title, int flags)
 {
     Window* w = GNW_find(win);
@@ -143,7 +143,7 @@ int win_register_text_button(int win, int x, int y, int mouseEnterEventCode, int
     return button->id;
 }
 
-// 0x4D8674
+// 0x4C4734
 int win_register_button_disable(int btn, unsigned char* up, unsigned char* down, unsigned char* hover)
 {
     if (!GNW_win_init_flag) {
@@ -162,7 +162,7 @@ int win_register_button_disable(int btn, unsigned char* up, unsigned char* down,
     return 0;
 }
 
-// 0x4D86A8
+// 0x4C4768
 int win_register_button_image(int btn, unsigned char* up, unsigned char* down, unsigned char* hover, int a5)
 {
     if (!GNW_win_init_flag) {
@@ -201,9 +201,7 @@ int win_register_button_image(int btn, unsigned char* up, unsigned char* down, u
     return 0;
 }
 
-// Sets primitive callbacks on the button.
-//
-// 0x4D8758
+// 0x4C4810
 int win_register_button_func(int btn, ButtonCallback* mouseEnterProc, ButtonCallback* mouseExitProc, ButtonCallback* mouseDownProc, ButtonCallback* mouseUpProc)
 {
     if (!GNW_win_init_flag) {
@@ -223,7 +221,7 @@ int win_register_button_func(int btn, ButtonCallback* mouseEnterProc, ButtonCall
     return 0;
 }
 
-// 0x4D8798
+// 0x4C4850
 int win_register_right_button(int btn, int rightMouseDownEventCode, int rightMouseUpEventCode, ButtonCallback* rightMouseDownProc, ButtonCallback* rightMouseUpProc)
 {
     if (!GNW_win_init_flag) {
@@ -249,16 +247,7 @@ int win_register_right_button(int btn, int rightMouseDownEventCode, int rightMou
     return 0;
 }
 
-// Sets button state callbacks.
-// [a2] - when button is transitioning to pressed state
-// [a3] - when button is returned to unpressed state
-//
-// The changes in the state are tied to graphical state, therefore these callbacks are not generated for
-// buttons with no graphics.
-//
-// These callbacks can be triggered several times during tracking if mouse leaves button's rectangle without releasing mouse buttons.
-//
-// 0x4D87F8
+// 0x4C48B0
 int win_register_button_sound_func(int btn, ButtonCallback* onPressed, ButtonCallback* onUnpressed)
 {
     if (!GNW_win_init_flag) {
@@ -276,7 +265,7 @@ int win_register_button_sound_func(int btn, ButtonCallback* onPressed, ButtonCal
     return 0;
 }
 
-// 0x4D8828
+// 0x4C48E0
 int win_register_button_mask(int btn, unsigned char* mask)
 {
     if (!GNW_win_init_flag) {
@@ -293,7 +282,7 @@ int win_register_button_mask(int btn, unsigned char* mask)
     return 0;
 }
 
-// 0x4D8854
+// 0x4C490C
 static Button* button_create(int win, int x, int y, int width, int height, int mouseEnterEventCode, int mouseExitEventCode, int mouseDownEventCode, int mouseUpEventCode, int flags, unsigned char* up, unsigned char* dn, unsigned char* hover)
 {
     Window* w = GNW_find(win);
@@ -359,7 +348,7 @@ static Button* button_create(int win, int x, int y, int width, int height, int m
     return button;
 }
 
-// 0x4D89E4
+// 0x4C4A9C
 bool win_button_down(int btn)
 {
     if (!GNW_win_init_flag) {
@@ -378,7 +367,7 @@ bool win_button_down(int btn)
     return false;
 }
 
-// 0x4D8A10
+// 0x4C4AC8
 int GNW_check_buttons(Window* w, int* keyCodePtr)
 {
     Rect v58;
@@ -728,7 +717,7 @@ int GNW_check_buttons(Window* w, int* keyCodePtr)
     return -1;
 }
 
-// 0x4D9214
+// 0x4C52CC
 static bool button_under_mouse(Button* button, Rect* rect)
 {
     if (!mouse_click_in(rect->ulx, rect->uly, rect->lrx, rect->lry)) {
@@ -749,7 +738,7 @@ static bool button_under_mouse(Button* button, Rect* rect)
     return button->mask[width * y + x] != 0;
 }
 
-// 0x4D927C
+// 0x4C5334
 int win_button_winID(int btn)
 {
     if (!GNW_win_init_flag) {
@@ -764,13 +753,13 @@ int win_button_winID(int btn)
     return w->id;
 }
 
-// 0x4D92B4
+// 0x4C536C
 int win_last_button_winID()
 {
     return last_button_winID;
 }
 
-// 0x4D92BC
+// 0x4C5374
 int win_delete_button(int btn)
 {
     if (!GNW_win_init_flag) {
@@ -808,7 +797,7 @@ int win_delete_button(int btn)
     return 0;
 }
 
-// 0x4D9374
+// 0x4C542C
 void GNW_delete_button(Button* button)
 {
     if ((button->flags & BUTTON_FLAG_0x010000) == 0) {
@@ -855,9 +844,7 @@ void GNW_delete_button(Button* button)
     mem_free(button);
 }
 
-// NOTE: Unused.
-//
-// 0x4D9430
+// 0x4C54E8
 void win_delete_button_win(int btn, int inputEvent)
 {
     Button* button;
@@ -870,9 +857,7 @@ void win_delete_button_win(int btn, int inputEvent)
     }
 }
 
-// NOTE: Inlined.
-//
-// 0x4D9458
+// 0x4C5510
 int button_new_id()
 {
     int btn;
@@ -885,7 +870,7 @@ int button_new_id()
     return btn;
 }
 
-// 0x4D9474
+// 0x4C552C
 int win_enable_button(int btn)
 {
     if (!GNW_win_init_flag) {
@@ -906,7 +891,7 @@ int win_enable_button(int btn)
     return 0;
 }
 
-// 0x4D94D0
+// 0x4C5588
 int win_disable_button(int btn)
 {
     if (!GNW_win_init_flag) {
@@ -935,7 +920,7 @@ int win_disable_button(int btn)
     return 0;
 }
 
-// 0x4D9554
+// 0x4C560C
 int win_set_button_rest_state(int btn, bool a2, int a3)
 {
     if (!GNW_win_init_flag) {
@@ -991,7 +976,7 @@ int win_set_button_rest_state(int btn, bool a2, int a3)
     return 0;
 }
 
-// 0x4D962C
+// 0x4C56E4
 int win_group_check_buttons(int buttonCount, int* btns, int a3, void (*a4)(int))
 {
     if (!GNW_win_init_flag) {
@@ -1032,7 +1017,7 @@ int win_group_check_buttons(int buttonCount, int* btns, int a3, void (*a4)(int))
     return -1;
 }
 
-// 0x4D96EC
+// 0x4C57A4
 int win_group_radio_buttons(int count, int* btns)
 {
     if (!GNW_win_init_flag) {
@@ -1054,7 +1039,7 @@ int win_group_radio_buttons(int count, int* btns)
     return 0;
 }
 
-// 0x4D9744
+// 0x4C57FC
 static int button_check_group(Button* button)
 {
     if (button->radioGroup == NULL) {
@@ -1101,7 +1086,7 @@ static int button_check_group(Button* button)
     return -1;
 }
 
-// 0x4D9808
+// 0x4C58C0
 static void button_draw(Button* button, Window* w, unsigned char* data, int a4, Rect* a5, int a6)
 {
     unsigned char* previousImage = NULL;
@@ -1186,7 +1171,7 @@ static void button_draw(Button* button, Window* w, unsigned char* data, int a4, 
     }
 }
 
-// 0x4D9A58
+// 0x4C5B10
 void GNW_button_refresh(Window* w, Rect* rect)
 {
     Button* button = w->buttonListHead;
@@ -1202,7 +1187,7 @@ void GNW_button_refresh(Window* w, Rect* rect)
     }
 }
 
-// 0x4D9AA0
+// 0x4C5B58
 int win_button_press_and_release(int btn)
 {
     if (!GNW_win_init_flag) {
