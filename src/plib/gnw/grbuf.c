@@ -6,7 +6,7 @@
 #include "plib/gnw/input.h"
 #include "plib/gnw/mmx.h"
 
-// 0x4D2FC0
+// 0x4BD850
 void draw_line(unsigned char* buf, int pitch, int x1, int y1, int x2, int y2, int color)
 {
     int temp;
@@ -129,7 +129,7 @@ void draw_line(unsigned char* buf, int pitch, int x1, int y1, int x2, int y2, in
     }
 }
 
-// 0x4D31A4
+// 0x4BDA34
 void draw_box(unsigned char* buf, int pitch, int left, int top, int right, int bottom, int color)
 {
     draw_line(buf, pitch, left, top, right, top, color);
@@ -138,7 +138,7 @@ void draw_box(unsigned char* buf, int pitch, int left, int top, int right, int b
     draw_line(buf, pitch, right, top, right, bottom, color);
 }
 
-// 0x4D322C
+// 0x4BDABC
 void draw_shaded_box(unsigned char* buf, int pitch, int left, int top, int right, int bottom, int ltColor, int rbColor)
 {
     draw_line(buf, pitch, left, top, right, top, ltColor);
@@ -147,7 +147,7 @@ void draw_shaded_box(unsigned char* buf, int pitch, int left, int top, int right
     draw_line(buf, pitch, right, top, right, bottom, rbColor);
 }
 
-// 0x4D33F0
+// 0x4BDC80
 void cscale(unsigned char* src, int srcWidth, int srcHeight, int srcPitch, unsigned char* dest, int destWidth, int destHeight, int destPitch)
 {
     int heightRatio = (destHeight << 16) / srcHeight;
@@ -183,7 +183,7 @@ void cscale(unsigned char* src, int srcWidth, int srcHeight, int srcPitch, unsig
     }
 }
 
-// 0x4D3560
+// 0x4BDDF0
 void trans_cscale(unsigned char* src, int srcWidth, int srcHeight, int srcPitch, unsigned char* dest, int destWidth, int destHeight, int destPitch)
 {
     int heightRatio = (destHeight << 16) / srcHeight;
@@ -221,13 +221,13 @@ void trans_cscale(unsigned char* src, int srcWidth, int srcHeight, int srcPitch,
     }
 }
 
-// 0x4D36D4
+// 0x4BDF64
 void buf_to_buf(unsigned char* src, int width, int height, int srcPitch, unsigned char* dest, int destPitch)
 {
     srcCopy(dest, destPitch, src, srcPitch, width, height);
 }
 
-// 0x4D3704
+// 0x4BDF94
 void trans_buf_to_buf(unsigned char* src, int width, int height, int srcPitch, unsigned char* dest, int destPitch)
 {
     transSrcCopy(dest, destPitch, src, srcPitch, width, height);
@@ -254,7 +254,7 @@ void mask_buf_to_buf(unsigned char* src, int width, int height, int srcPitch, un
     }
 }
 
-// 0x4D387C
+// 0x4BE10C
 void buf_fill(unsigned char* buf, int width, int height, int pitch, int a5)
 {
     int y;
@@ -265,13 +265,13 @@ void buf_fill(unsigned char* buf, int width, int height, int pitch, int a5)
     }
 }
 
-// 0x4D38E0
+// 0x4BE170
 void buf_texture(unsigned char* buf, int width, int height, int pitch, void* a5, int a6, int a7)
 {
     // TODO: Incomplete.
 }
 
-// 0x4D3A48
+// 0x4BE2D8
 void lighten_buf(unsigned char* buf, int width, int height, int pitch)
 {
     int skip = pitch - width;
@@ -287,7 +287,7 @@ void lighten_buf(unsigned char* buf, int width, int height, int pitch)
 
 // Swaps two colors in the buffer.
 //
-// 0x4D3A8C
+// 0x4BE31C
 void swap_color_buf(unsigned char* buf, int width, int height, int pitch, int color1, int color2)
 {
     int step = pitch - width;
@@ -305,7 +305,7 @@ void swap_color_buf(unsigned char* buf, int width, int height, int pitch, int co
     }
 }
 
-// 0x4D3AE0
+// 0x4BE370
 void buf_outline(unsigned char* buf, int width, int height, int pitch, int color)
 {
     unsigned char* ptr = buf + pitch;
