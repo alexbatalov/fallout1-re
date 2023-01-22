@@ -46,15 +46,19 @@ extern unsigned char* screen_buffer;
 extern void* GNW_texture;
 
 int win_init(VideoSystemInitProc* videoSystemInitProc, VideoSystemExitProc* videoSystemExitProc, int a3);
+int win_active();
 void win_exit(void);
 int win_add(int x, int y, int width, int height, int a4, int flags);
 void win_delete(int win);
 void win_buffering(bool a1);
 void win_border(int win);
+void win_no_texture();
+void win_set_bk_color(int color);
 void win_print(int win, char* str, int a3, int x, int y, int a6);
 void win_text(int win, char** fileNameList, int fileNameListLength, int maxWidth, int x, int y, int flags);
 void win_line(int win, int left, int top, int right, int bottom, int color);
 void win_box(int win, int left, int top, int right, int bottom, int color);
+void win_shaded_box(int id, int ulx, int uly, int lrx, int lry, int color1, int color2);
 void win_fill(int win, int x, int y, int width, int height, int a6);
 void win_show(int win);
 void win_hide(int win);
@@ -75,6 +79,7 @@ int win_check_all_buttons();
 Button* GNW_find_button(int btn, Window** out_win);
 int GNW_check_menu_bars(int a1);
 void win_set_minimized_title(const char* title);
+void win_set_trans_b2b(int id, WindowBlitProc* trans_b2b);
 bool GNWSystemError(const char* str);
 
 #endif /* FALLOUT_PLIB_GNW_GNW_H_ */
