@@ -2181,32 +2181,30 @@ int scr_remove_all()
     queue_clear_type(EVENT_TYPE_SCRIPT, NULL);
     scr_message_free();
 
-    for (int scrType = 0; scrType < SCRIPT_TYPE_COUNT; scrType++) {
-        ScriptList* scriptList = &(scriptlists[scrType]);
+    for (int scriptType = 0; scriptType < SCRIPT_TYPE_COUNT; scriptType++) {
+        ScriptList* scriptList = &(scriptlists[scriptType]);
 
-        // TODO: Super odd way to remove scripts. The problem is that [scrRemove]
-        // does relocate scripts between extents, so current extent may become
-        // empty. In addition there is a 0x10 flag on the script that is not
-        // removed. Find a way to refactor this.
         ScriptListExtent* scriptListExtent = scriptList->head;
         while (scriptListExtent != NULL) {
-            ScriptListExtent* next = NULL;
-            for (int scriptIndex = 0; scriptIndex < scriptListExtent->length;) {
-                Script* script = &(scriptListExtent->scripts[scriptIndex]);
+            int index = 0;
+            while (scriptListExtent != NULL && index < scriptListExtent->length) {
+                Script* script = &(scriptListExtent->scripts[index]);
 
                 if ((script->scr_flags & SCRIPT_FLAG_0x10) != 0) {
-                    scriptIndex++;
+                    index++;
                 } else {
-                    if (scriptIndex != 0 || scriptListExtent->length != 1) {
+                    if (index == 0 && scriptListExtent->length == 1) {
+                        scriptListExtent = scriptListExtent->next;
                         scr_remove(script->scr_id);
                     } else {
-                        next = scriptListExtent->next;
                         scr_remove(script->scr_id);
                     }
                 }
             }
 
-            scriptListExtent = next;
+            if (scriptListExtent != NULL) {
+                scriptListExtent = scriptListExtent->next;
+            }
         }
     }
 
