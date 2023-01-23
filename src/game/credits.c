@@ -4,6 +4,7 @@
 
 #include "game/art.h"
 #include "game/cycle.h"
+#include "game/gconfig.h"
 #include "game/gmouse.h"
 #include "game/message.h"
 #include "game/palette.h"
@@ -23,22 +24,22 @@
 
 static bool credits_get_next_line(char* dest, int* font, int* color);
 
-// 0x56D740
+// 0x56BEE0
 static DB_FILE* credits_file;
 
-// 0x56D744
+// 0x56BEE4
 static int name_color;
 
-// 0x56D748
+// 0x56BEE8
 static int title_font;
 
-// 0x56D74C
+// 0x56BEEC
 static int name_font;
 
-// 0x56D750
+// 0x56BEF0
 static int title_color;
 
-// 0x42C860
+// 0x426FE0
 void credits(const char* filePath, int backgroundFid, bool useReversedStyle)
 {
     int oldFont = text_curr();
@@ -117,6 +118,13 @@ void credits(const char* filePath, int backgroundFid, bool useReversedStyle)
                             int stringBufferSize = CREDITS_WINDOW_WIDTH * lineHeight;
                             unsigned char* stringBuffer = (unsigned char*)mem_malloc(stringBufferSize);
                             if (stringBuffer != NULL) {
+                                const char* boom = "boom";
+                                int exploding_head_frame = 0;
+                                int exploding_head_cycle = 0;
+                                int violence_level = 0;
+
+                                config_get_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_VIOLENCE_LEVEL_KEY, &violence_level);
+
                                 buf_to_buf(backgroundBuffer,
                                     CREDITS_WINDOW_WIDTH,
                                     CREDITS_WINDOW_HEIGHT,
@@ -148,9 +156,18 @@ void credits(const char* filePath, int backgroundFid, bool useReversedStyle)
                                     unsigned char* dest = intermediateBuffer + CREDITS_WINDOW_WIDTH * CREDITS_WINDOW_HEIGHT - CREDITS_WINDOW_WIDTH + (CREDITS_WINDOW_WIDTH - v19) / 2;
                                     unsigned char* src = stringBuffer;
                                     for (int index = 0; index < lineHeight; index++) {
-                                        if (get_input() != -1) {
-                                            stop = true;
-                                            break;
+                                        int input = get_input();
+                                        if (input != -1) {
+                                            if (input != *boom) {
+                                                stop = true;
+                                                break;
+                                            }
+
+                                            boom++;
+                                            if (*boom == '\0') {
+                                                exploding_head_frame = 1;
+                                                boom = "boom";
+                                            }
                                         }
 
                                         memmove(intermediateBuffer, intermediateBuffer + CREDITS_WINDOW_WIDTH, CREDITS_WINDOW_WIDTH * CREDITS_WINDOW_HEIGHT - CREDITS_WINDOW_WIDTH);
@@ -169,6 +186,34 @@ void credits(const char* filePath, int backgroundFid, bool useReversedStyle)
                                             CREDITS_WINDOW_WIDTH,
                                             windowBuffer,
                                             CREDITS_WINDOW_WIDTH);
+
+                                        if (violence_level != VIOLENCE_LEVEL_NONE) {
+                                            if (exploding_head_frame != 0) {
+                                                CacheEntry* exploding_head_key;
+                                                int exploding_head_fid = art_id(OBJ_TYPE_INTERFACE, 39, 0, 0, 0);
+                                                Art* exploding_head_frm = art_ptr_lock(exploding_head_fid, &exploding_head_key);
+                                                if (exploding_head_frm != NULL && exploding_head_frame - 1 < art_frame_max_frame(exploding_head_frm)) {
+                                                    int width = art_frame_width(exploding_head_frm, exploding_head_frame - 1, 0);
+                                                    int height = art_frame_length(exploding_head_frm, exploding_head_frame - 1, 0);
+                                                    unsigned char* logoData = art_frame_data(exploding_head_frm, exploding_head_frame - 1, 0);
+                                                    trans_buf_to_buf(logoData,
+                                                        width,
+                                                        height,
+                                                        width,
+                                                        windowBuffer + CREDITS_WINDOW_WIDTH * (CREDITS_WINDOW_HEIGHT - height) + (CREDITS_WINDOW_WIDTH - width) / 2,
+                                                        CREDITS_WINDOW_WIDTH);
+                                                    art_ptr_unlock(exploding_head_key);
+
+                                                    if (exploding_head_cycle) {
+                                                        exploding_head_frame++;
+                                                    }
+
+                                                    exploding_head_cycle = 1 - exploding_head_cycle;
+                                                } else {
+                                                    exploding_head_frame = 0;
+                                                }
+                                            }
+                                        }
 
                                         while (elapsed_time(tick) < CREDITS_WINDOW_SCROLLING_DELAY) {
                                         }
@@ -244,7 +289,7 @@ void credits(const char* filePath, int backgroundFid, bool useReversedStyle)
     text_font(oldFont);
 }
 
-// 0x42CE6C
+// 0x42777C
 static bool credits_get_next_line(char* dest, int* font, int* color)
 {
     char string[256];
