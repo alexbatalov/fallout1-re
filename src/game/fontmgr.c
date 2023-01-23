@@ -33,19 +33,19 @@ static int FMLoadFont(int font);
 static void Swap4(unsigned int* value);
 static void Swap2(unsigned short* value);
 
-// 0x518680
+// 0x504F88
 static bool gFMInit = false;
 
-// 0x518684
+// 0x504F8C
 static int gNumFonts = 0;
 
-// 0x586838
+// 0x584B08
 static InterfaceFontDescriptor gFontCache[INTERFACE_FONT_MAX];
 
-// 0x58E938
+// 0x58CC08
 static int gCurrentFontNum;
 
-// 0x58E93C
+// 0x58CC0C
 static InterfaceFontDescriptor* gCurrentFont;
 
 // 0x43A780
@@ -395,8 +395,6 @@ int FMtext_space_width()
     return gCurrentFont->wordSpacing;
 }
 
-// NOTE: Inlined.
-//
 // 0x442520
 static void Swap4(unsigned int* value)
 {
