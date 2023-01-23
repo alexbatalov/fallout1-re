@@ -48,62 +48,63 @@ static void gsound_background_remove_last_copy();
 static int gsound_background_start();
 static int gsound_speech_start();
 static int gsound_get_music_path(char** out_value, const char* key);
+static void gsound_check_active_effects();
 static Sound* gsound_get_sound_ready_for_effect();
 static bool gsound_file_exists_f(const char* fname);
 static int gsound_file_exists_db(const char* path);
 static int gsound_setup_paths();
 
 // TODO: Remove.
-// 0x5035BC
+// 0x4F2C54
 char _aSoundSfx[] = "sound\\sfx\\";
 
 // TODO: Remove.
-// 0x5035C8
+// 0x4F2C60
 char _aSoundMusic_0[] = "sound\\music\\";
 
 // TODO: Remove.
-// 0x5035D8
+// 0x4F2C70
 char _aSoundSpeech_0[] = "sound\\speech\\";
 
-// 0x518E30
+// 0x505434
 static bool gsound_initialized = false;
 
-// 0x518E34
+// 0x505438
 static bool gsound_debug = false;
 
-// 0x518E38
+// 0x50543C
 static bool gsound_background_enabled = false;
 
-// 0x518E3C
-static int _gsound_background_df_vol = 0;
+// 0x505440
+static int gsound_background_df_vol = 0;
 
-// 0x518E40
+// 0x505444
 static int gsound_background_fade = 0;
 
-// 0x518E44
+// 0x505448
 static bool gsound_speech_enabled = false;
 
-// 0x518E48
+// 0x50544C
 static bool gsound_sfx_enabled = false;
 
-// number of active effects (max 4)
+// Number of active effects (max 4).
 //
-// 0x518E4C
+// 0x505450
 static int gsound_active_effect_counter;
 
-// 0x518E50
+// 0x505454
 static Sound* gsound_background_tag = NULL;
 
-// 0x518E54
+// 0x505458
 static Sound* gsound_speech_tag = NULL;
 
-// 0x518E58
+// 0x50545C
 static SoundEndCallback* gsound_background_callback_fp = NULL;
 
-// 0x518E5C
+// 0x505460
 static SoundEndCallback* gsound_speech_callback_fp = NULL;
 
-// 0x518E60
+// 0x505464
 static char snd_lookup_weapon_type[WEAPON_SOUND_EFFECT_COUNT] = {
     'R', // Ready
     'A', // Attack
@@ -112,7 +113,7 @@ static char snd_lookup_weapon_type[WEAPON_SOUND_EFFECT_COUNT] = {
     'H', // Hit
 };
 
-// 0x518E65
+// 0x505469
 static char snd_lookup_scenery_action[SCENERY_SOUND_EFFECT_COUNT] = {
     'O', // Open
     'C', // Close
@@ -121,51 +122,49 @@ static char snd_lookup_scenery_action[SCENERY_SOUND_EFFECT_COUNT] = {
     'U', // Use
 };
 
-// 0x518E6C
+// 0x505470
 static int background_storage_requested = -1;
 
-// 0x518E70
+// 0x505474
 static int background_loop_requested = -1;
 
-// 0x518E74
-static char sound_sfx_path[] = "sound\\sfx\\";
+// 0x505478
+static char* sound_sfx_path = _aSoundSfx;
 
-// 0x518E78
+// 0x50547C
 static char* sound_music_path1 = _aSoundMusic_0;
 
-// 0x518E7C
+// 0x505480
 static char* sound_music_path2 = _aSoundMusic_0;
 
-// 0x518E80
+// 0x505484
 static char* sound_speech_path = _aSoundSpeech_0;
 
-// 0x518E84
+// 0x505488
 static int master_volume = VOLUME_MAX;
 
-// 0x518E88
+// 0x50548C
 static int background_volume = VOLUME_MAX;
 
-// 0x518E8C
+// 0x505490
 static int speech_volume = VOLUME_MAX;
 
-// 0x518E90
+// 0x505494
 static int sndfx_volume = VOLUME_MAX;
 
-// 0x518E94
+// 0x505498
 static int detectDevices = -1;
 
-// 0x596EB0
+// 0x595450
 static char background_fname_copied[MAX_PATH];
 
-// 0x596FB5
+// 0x595555
 static char sfx_file_name[13];
 
-// NOTE: I'm mot sure about it's size. Why not MAX_PATH?
-//
-// 0x596FC2
-static char background_fname_requested[270];
+// 0x595562
+static char background_fname_requested[MAX_PATH];
 
-// 0x44FC70
+// 0x4475A0
 int gsound_init()
 {
     if (gsound_initialized) {
@@ -332,7 +331,7 @@ int gsound_init()
     return 0;
 }
 
-// 0x450164
+// 0x447A94
 void gsound_reset()
 {
     if (!gsound_initialized) {
@@ -346,7 +345,7 @@ void gsound_reset()
     // NOTE: Uninline.
     gsound_speech_stop();
 
-    if (_gsound_background_df_vol) {
+    if (gsound_background_df_vol) {
         // NOTE: Uninline.
         gsound_background_enable();
     }
@@ -369,7 +368,7 @@ void gsound_reset()
     return;
 }
 
-// 0x450244
+// 0x447B74
 int gsound_exit()
 {
     if (!gsound_initialized) {
@@ -393,9 +392,7 @@ int gsound_exit()
     return 0;
 }
 
-// NOTE: Inlined.
-//
-// 0x4502BC
+// 0x447BEC
 void gsound_sfx_enable()
 {
     if (gsound_initialized) {
@@ -403,9 +400,7 @@ void gsound_sfx_enable()
     }
 }
 
-// NOTE: Inlined.
-//
-// 0x4502D0
+// 0x447C00
 void gsound_sfx_disable()
 {
     if (gsound_initialized) {
@@ -413,13 +408,13 @@ void gsound_sfx_disable()
     }
 }
 
-// 0x4502E4
+// 0x447C14
 int gsound_sfx_is_enabled()
 {
     return gsound_sfx_enabled;
 }
 
-// 0x4502EC
+// 0x447C1C
 int gsound_set_master_volume(int volume)
 {
     if (!gsound_initialized) {
@@ -433,10 +428,10 @@ int gsound_set_master_volume(int volume)
         return -1;
     }
 
-    if (_gsound_background_df_vol && volume != 0 && gsound_background_volume_get() != 0) {
+    if (gsound_background_df_vol && volume != 0 && gsound_background_volume_get() != 0) {
         // NOTE: Uninline.
         gsound_background_enable();
-        _gsound_background_df_vol = 0;
+        gsound_background_df_vol = 0;
     }
 
     if (soundSetMasterVolume(volume) != 0) {
@@ -450,19 +445,19 @@ int gsound_set_master_volume(int volume)
     if (gsound_background_enabled && volume == 0) {
         // NOTE: Uninline.
         gsound_background_disable();
-        _gsound_background_df_vol = 1;
+        gsound_background_df_vol = 1;
     }
 
     return 0;
 }
 
-// 0x450410
+// 0x447D40
 int gsound_get_master_volume()
 {
     return master_volume;
 }
 
-// 0x450418
+// 0x447D48
 int gsound_set_sfx_volume(int volume)
 {
     if (!gsound_initialized || volume < VOLUME_MIN || volume > VOLUME_MAX) {
@@ -477,15 +472,13 @@ int gsound_set_sfx_volume(int volume)
     return 0;
 }
 
-// 0x450454
+// 0x447D84
 int gsound_get_sfx_volume()
 {
     return sndfx_volume;
 }
 
-// NOTE: Inlined.
-//
-// 0x45045C
+// 0x447D8C
 void gsound_background_disable()
 {
     if (gsound_initialized) {
@@ -497,9 +490,7 @@ void gsound_background_disable()
     }
 }
 
-// NOTE: Inlined.
-//
-// 0x450488
+// 0x447DB8
 void gsound_background_enable()
 {
     if (gsound_initialized) {
@@ -511,13 +502,13 @@ void gsound_background_enable()
     }
 }
 
-// 0x4504D4
+// 0x447E04
 int gsound_background_is_enabled()
 {
     return gsound_background_enabled;
 }
 
-// 0x4504DC
+// 0x447E0C
 void gsound_background_volume_set(int volume)
 {
     if (!gsound_initialized) {
@@ -533,10 +524,10 @@ void gsound_background_volume_set(int volume)
 
     background_volume = volume;
 
-    if (_gsound_background_df_vol) {
+    if (gsound_background_df_vol) {
         // NOTE: Uninline.
         gsound_background_enable();
-        _gsound_background_df_vol = 0;
+        gsound_background_df_vol = 0;
     }
 
     if (gsound_background_enabled) {
@@ -553,18 +544,18 @@ void gsound_background_volume_set(int volume)
         if (volume == 0 || gsound_get_master_volume() == 0) {
             // NOTE: Uninline.
             gsound_background_disable();
-            _gsound_background_df_vol = 1;
+            gsound_background_df_vol = 1;
         }
     }
 }
 
-// 0x450618
+// 0x447F48
 int gsound_background_volume_get()
 {
     return background_volume;
 }
 
-// 0x450620
+// 0x447F50
 int gsound_background_volume_get_set(int volume)
 {
     int oldMusicVolume;
@@ -576,25 +567,19 @@ int gsound_background_volume_get_set(int volume)
     return oldMusicVolume;
 }
 
-// NOTE: Inlined.
-//
-// 0x450630
+// 0x447F60
 void gsound_background_fade_set(int value)
 {
     gsound_background_fade = value;
 }
 
-// NOTE: Inlined.
-//
-// 0x450638
+// 0x447F68
 int gsound_background_fade_get()
 {
     return gsound_background_fade;
 }
 
-// NOTE: Unused.
-//
-// 0x450640
+// 0x447F70
 int gsound_background_fade_get_set(int value)
 {
     int oldValue;
@@ -608,19 +593,19 @@ int gsound_background_fade_get_set(int value)
     return oldValue;
 }
 
-// 0x450650
+// 0x447F80
 void gsound_background_callback_set(SoundEndCallback* callback)
 {
     gsound_background_callback_fp = callback;
 }
 
-// 0x450658
+// 0x447F88
 SoundEndCallback* gsound_background_callback_get()
 {
     return gsound_background_callback_fp;
 }
 
-// 0x450660
+// 0x447F90
 SoundEndCallback* gsound_background_callback_get_set(SoundEndCallback* callback)
 {
     SoundEndCallback* oldCallback;
@@ -634,9 +619,7 @@ SoundEndCallback* gsound_background_callback_get_set(SoundEndCallback* callback)
     return oldCallback;
 }
 
-// NOTE: There are no references to this function.
-//
-// 0x450670
+// 0x447FA0
 int gsound_background_length_get()
 {
     return soundLength(gsound_background_tag);
@@ -644,7 +627,7 @@ int gsound_background_length_get()
 
 // [fileName] is base file name, without path and extension.
 //
-// 0x45067C
+// 0x447FAC
 int gsound_background_play(const char* fileName, int a2, int a3, int a4)
 {
     int rc;
@@ -794,13 +777,13 @@ int gsound_background_play(const char* fileName, int a2, int a3, int a4)
     return 0;
 }
 
-// 0x450A08
+// 0x448338
 int gsound_background_play_level_music(const char* a1, int a2)
 {
     return gsound_background_play(a1, a2, 14, 16);
 }
 
-// 0x450A1C
+// 0x44834C
 int gsound_background_play_preloaded()
 {
     if (!gsound_initialized) {
@@ -836,7 +819,7 @@ int gsound_background_play_preloaded()
     return 0;
 }
 
-// 0x450AB4
+// 0x4483E4
 void gsound_background_stop()
 {
     if (gsound_initialized && gsound_background_enabled && gsound_background_tag) {
@@ -852,7 +835,7 @@ void gsound_background_stop()
     }
 }
 
-// 0x450B0C
+// 0x44843C
 void gsound_background_restart_last(int value)
 {
     if (background_fname_requested[0] != '\0') {
@@ -863,7 +846,7 @@ void gsound_background_restart_last(int value)
     }
 }
 
-// 0x450B50
+// 0x448480
 void gsound_background_pause()
 {
     if (gsound_background_tag != NULL) {
@@ -871,7 +854,7 @@ void gsound_background_pause()
     }
 }
 
-// 0x450B64
+// 0x448494
 void gsound_background_unpause()
 {
     if (gsound_background_tag != NULL) {
@@ -879,9 +862,7 @@ void gsound_background_unpause()
     }
 }
 
-// NOTE: Inlined.
-//
-// 0x450B78
+// 0x4484A8
 void gsound_speech_disable()
 {
     if (gsound_initialized) {
@@ -892,9 +873,7 @@ void gsound_speech_disable()
     }
 }
 
-// NOTE: Inlined.
-//
-// 0x450BC0
+// 0x4484F0
 void gsound_speech_enable()
 {
     if (gsound_initialized) {
@@ -904,13 +883,13 @@ void gsound_speech_enable()
     }
 }
 
-// 0x450BE0
+// 0x448510
 int gsound_speech_is_enabled()
 {
     return gsound_speech_enabled;
 }
 
-// 0x450BE8
+// 0x448518
 void gsound_speech_volume_set(int volume)
 {
     if (!gsound_initialized) {
@@ -933,13 +912,13 @@ void gsound_speech_volume_set(int volume)
     }
 }
 
-// 0x450C5C
+// 0x44858C
 int gsound_speech_volume_get()
 {
     return speech_volume;
 }
 
-// 0x450C64
+// 0x448594
 int gsound_speech_volume_get_set(int volume)
 {
     int oldVolume = speech_volume;
@@ -947,19 +926,19 @@ int gsound_speech_volume_get_set(int volume)
     return oldVolume;
 }
 
-// 0x450C74
+// 0x4485A4
 void gsound_speech_callback_set(SoundEndCallback* callback)
 {
     gsound_speech_callback_fp = callback;
 }
 
-// 0x450C7C
+// 0x4485AC
 SoundEndCallback* gsound_speech_callback_get()
 {
     return gsound_speech_callback_fp;
 }
 
-// 0x450C84
+// 0x4485B4
 SoundEndCallback* gsound_speech_callback_get_set(SoundEndCallback* callback)
 {
     SoundEndCallback* oldCallback;
@@ -973,13 +952,13 @@ SoundEndCallback* gsound_speech_callback_get_set(SoundEndCallback* callback)
     return oldCallback;
 }
 
-// 0x450C94
+// 0x4485C4
 int gsound_speech_length_get()
 {
     return soundLength(gsound_speech_tag);
 }
 
-// 0x450CA0
+// 0x4485D0
 int gsound_speech_play(const char* fname, int a2, int a3, int a4)
 {
     char path[MAX_PATH + 1];
@@ -1087,7 +1066,7 @@ int gsound_speech_play(const char* fname, int a2, int a3, int a4)
     return 0;
 }
 
-// 0x450F8C
+// 0x4488BC
 int gsound_speech_play_preloaded()
 {
     if (!gsound_initialized) {
@@ -1124,7 +1103,7 @@ int gsound_speech_play_preloaded()
     return 0;
 }
 
-// 0x451024
+// 0x448954
 void gsound_speech_stop()
 {
     if (gsound_initialized && gsound_speech_enabled) {
@@ -1135,7 +1114,7 @@ void gsound_speech_stop()
     }
 }
 
-// 0x451054
+// 0x448984
 void gsound_speech_pause()
 {
     if (gsound_speech_tag != NULL) {
@@ -1143,7 +1122,7 @@ void gsound_speech_pause()
     }
 }
 
-// 0x451068
+// 0x448998
 void gsound_speech_unpause()
 {
     if (gsound_speech_tag != NULL) {
@@ -1151,7 +1130,7 @@ void gsound_speech_unpause()
     }
 }
 
-// 0x45108C
+// 0x4489BC
 int gsound_play_sfx_file_volume(const char* a1, int a2)
 {
     Sound* v1;
@@ -1174,7 +1153,7 @@ int gsound_play_sfx_file_volume(const char* a1, int a2)
     return 0;
 }
 
-// 0x4510DC
+// 0x448A0C
 Sound* gsound_load_sound(const char* name, Object* object)
 {
     if (!gsound_initialized) {
@@ -1291,7 +1270,7 @@ Sound* gsound_load_sound(const char* name, Object* object)
     return NULL;
 }
 
-// 0x45145C
+// 0x448D8C
 Sound* gsound_load_sound_volume(const char* name, Object* object, int volume)
 {
     Sound* sound = gsound_load_sound(name, object);
@@ -1303,7 +1282,7 @@ Sound* gsound_load_sound_volume(const char* name, Object* object, int volume)
     return sound;
 }
 
-// 0x45148C
+// 0x448DBC
 void gsound_delete_sfx(Sound* sound)
 {
     if (!gsound_initialized) {
@@ -1331,7 +1310,7 @@ void gsound_delete_sfx(Sound* sound)
     --gsound_active_effect_counter;
 }
 
-// 0x4514F0
+// 0x448E20
 int gsnd_anim_sound(Sound* sound, void* a2)
 {
     if (!gsound_initialized) {
@@ -1351,7 +1330,7 @@ int gsnd_anim_sound(Sound* sound, void* a2)
     return 0;
 }
 
-// 0x451510
+// 0x448E40
 int gsound_play_sound(Sound* sound)
 {
     if (!gsound_initialized) {
@@ -1371,10 +1350,7 @@ int gsound_play_sound(Sound* sound)
     return 0;
 }
 
-// Probably returns volume dependending on the distance between the specified
-// object and dude.
-//
-// 0x451534
+// 0x448E64
 int gsound_compute_relative_volume(Object* obj)
 {
     int type;
@@ -1419,8 +1395,7 @@ int gsound_compute_relative_volume(Object* obj)
     return v3;
 }
 
-// sfx_build_char_name
-// 0x451604
+// 0x448F34
 char* gsnd_build_character_sfx_name(Object* a1, int anim, int extra)
 {
     char v7[13];
@@ -1457,8 +1432,7 @@ char* gsnd_build_character_sfx_name(Object* a1, int anim, int extra)
     return sfx_file_name;
 }
 
-// sfx_build_ambient_name
-// 0x4516F0
+// 0x449020
 char* gsnd_build_ambient_sfx_name(const char* a1)
 {
     sprintf(sfx_file_name, "A%6s%1d", a1, 1);
@@ -1466,8 +1440,7 @@ char* gsnd_build_ambient_sfx_name(const char* a1)
     return sfx_file_name;
 }
 
-// sfx_build_interface_name
-// 0x451718
+// 0x449048
 char* gsnd_build_interface_sfx_name(const char* a1)
 {
     sprintf(sfx_file_name, "N%6s%1d", a1, 1);
@@ -1475,8 +1448,7 @@ char* gsnd_build_interface_sfx_name(const char* a1)
     return sfx_file_name;
 }
 
-// sfx_build_weapon_name
-// 0x451760
+// 0x449090
 char* gsnd_build_weapon_sfx_name(int effectType, Object* weapon, int hitMode, Object* target)
 {
     int v6;
@@ -1551,8 +1523,7 @@ char* gsnd_build_weapon_sfx_name(int effectType, Object* weapon, int hitMode, Ob
     return sfx_file_name;
 }
 
-// sfx_build_scenery_name
-// 0x451898
+// 0x4491C4
 char* gsnd_build_scenery_sfx_name(int actionType, int action, const char* name)
 {
     char actionTypeCode = actionType == SOUND_EFFECT_ACTION_TYPE_PASSIVE ? 'P' : 'A';
@@ -1564,8 +1535,7 @@ char* gsnd_build_scenery_sfx_name(int actionType, int action, const char* name)
     return sfx_file_name;
 }
 
-// sfx_build_open_name
-// 0x4518D
+// 0x449208
 char* gsnd_build_open_sfx_name(Object* object, int action)
 {
     if (FID_TYPE(object->fid) == OBJ_TYPE_SCENERY) {
@@ -1586,57 +1556,55 @@ char* gsnd_build_open_sfx_name(Object* object, int action)
     return sfx_file_name;
 }
 
-// 0x451970
+// 0x44929C
 void gsound_red_butt_press(int btn, int keyCode)
 {
     gsound_play_sfx_file("ib1p1xx1");
 }
 
-// 0x451978
+// 0x4492A4
 void gsound_red_butt_release(int btn, int keyCode)
 {
     gsound_play_sfx_file("ib1lu1x1");
 }
 
-// 0x451980
+// 0x4492AC
 void gsound_toggle_butt_press(int btn, int keyCode)
 {
     gsound_play_sfx_file("toggle");
 }
 
-// NOTE: Uncollapsed from 0x451980.
-//
-// 0x451980
+// 0x4492AC
 void gsound_toggle_butt_release(int btn, int keyCode)
 {
     gsound_play_sfx_file("toggle");
 }
 
-// 0x451988
+// 0x4492B4
 void gsound_med_butt_press(int btn, int keyCode)
 {
     gsound_play_sfx_file("ib2p1xx1");
 }
 
-// 0x451990
+// 0x4492BC
 void gsound_med_butt_release(int btn, int keyCode)
 {
     gsound_play_sfx_file("ib2lu1x1");
 }
 
-// 0x451998
+// 0x4492C4
 void gsound_lrg_butt_press(int btn, int keyCode)
 {
     gsound_play_sfx_file("ib3p1xx1");
 }
 
-// 0x4519A0
+// 0x4492CC
 void gsound_lrg_butt_release(int btn, int keyCode)
 {
     gsound_play_sfx_file("ib3lu1x1");
 }
 
-// 0x4519A8
+// 0x4492D4
 int gsound_play_sfx_file(const char* name)
 {
     if (!gsound_initialized) {
@@ -1657,13 +1625,13 @@ int gsound_play_sfx_file(const char* name)
     return 0;
 }
 
-// 0x451A00
+// 0x44932C
 static void gsound_bkg_proc()
 {
     soundContinueAll();
 }
 
-// 0x451A08
+// 0x449334
 static int gsound_open(const char* fname, int flags, ...)
 {
     if ((flags & 2) != 0) {
@@ -1678,19 +1646,19 @@ static int gsound_open(const char* fname, int flags, ...)
     return (int)stream;
 }
 
-// 0x451A1C
+// 0x449348
 static long gsound_compressed_tell(int fileHandle)
 {
     return -1;
 }
 
-// NOTE: Uncollapsed 0x451A1C.
+// 0x449348
 static int gsound_write(int fileHandle, const void* buf, unsigned int size)
 {
     return -1;
 }
 
-// 0x451A24
+// 0x449350
 static int gsound_close(int fileHandle)
 {
     if (fileHandle == -1) {
@@ -1700,7 +1668,7 @@ static int gsound_close(int fileHandle)
     return db_fclose((DB_FILE*)fileHandle);
 }
 
-// 0x451A30
+// 0x44935C
 static int gsound_read(int fileHandle, void* buffer, unsigned int size)
 {
     if (fileHandle == -1) {
@@ -1710,7 +1678,7 @@ static int gsound_read(int fileHandle, void* buffer, unsigned int size)
     return db_fread(buffer, 1, size, (DB_FILE*)fileHandle);
 }
 
-// 0x451A4C
+// 0x449378
 static long gsound_seek(int fileHandle, long offset, int origin)
 {
     if (fileHandle == -1) {
@@ -1724,7 +1692,7 @@ static long gsound_seek(int fileHandle, long offset, int origin)
     return db_ftell((DB_FILE*)fileHandle);
 }
 
-// 0x451A70
+// 0x44939C
 static long gsound_tell(int handle)
 {
     if (handle == -1) {
@@ -1734,7 +1702,7 @@ static long gsound_tell(int handle)
     return db_ftell((DB_FILE*)handle);
 }
 
-// 0x451A7C
+// 0x4493A8
 static long gsound_filesize(int handle)
 {
     if (handle == -1) {
@@ -1744,13 +1712,13 @@ static long gsound_filesize(int handle)
     return db_filelength((DB_FILE*)handle);
 }
 
-// 0x451A88
+// 0x4493B4
 static bool gsound_compressed_query(char* filePath)
 {
     return true;
 }
 
-// 0x451A90
+// 0x4493BC
 static void gsound_internal_speech_callback(void* userData, int a2)
 {
     if (a2 == 1) {
@@ -1762,7 +1730,7 @@ static void gsound_internal_speech_callback(void* userData, int a2)
     }
 }
 
-// 0x451AB0
+// 0x4493DC
 static void gsound_internal_background_callback(void* userData, int a2)
 {
     if (a2 == 1) {
@@ -1774,7 +1742,7 @@ static void gsound_internal_background_callback(void* userData, int a2)
     }
 }
 
-// 0x451AD0
+// 0x4493FC
 static void gsound_internal_effect_callback(void* userData, int a2)
 {
     if (a2 == 1) {
@@ -1782,7 +1750,7 @@ static void gsound_internal_effect_callback(void* userData, int a2)
     }
 }
 
-// 0x451ADC
+// 0x449408
 static int gsound_background_allocate(Sound** soundPtr, int a2, int a3)
 {
     int v5 = 10;
@@ -1809,8 +1777,7 @@ static int gsound_background_allocate(Sound** soundPtr, int a2, int a3)
     return 0;
 }
 
-// gsound_background_find_with_copy
-// 0x451B30
+// 0x44945C
 static int gsound_background_find_with_copy(char* dest, const char* src)
 {
     size_t len = strlen(src) + strlen(".ACM");
@@ -1909,7 +1876,7 @@ static int gsound_background_find_with_copy(char* dest, const char* src)
     return 0;
 }
 
-// 0x451E2C
+// 0x449758
 static int gsound_background_find_dont_copy(char* dest, const char* src)
 {
     char path[MAX_PATH];
@@ -1953,7 +1920,7 @@ static int gsound_background_find_dont_copy(char* dest, const char* src)
     return -1;
 }
 
-// 0x451F94
+// 0x4498C0
 static int gsound_speech_find_dont_copy(char* dest, const char* src)
 {
     char path[MAX_PATH];
@@ -1989,8 +1956,7 @@ static int gsound_speech_find_dont_copy(char* dest, const char* src)
     return 0;
 }
 
-// delete old music file
-// 0x452088
+// 0x4499B4
 static void gsound_background_remove_last_copy()
 {
     if (background_fname_copied[0] != '\0') {
@@ -2006,7 +1972,7 @@ static void gsound_background_remove_last_copy()
     }
 }
 
-// 0x4520EC
+// 0x449A18
 static int gsound_background_start()
 {
     int result;
@@ -2034,7 +2000,7 @@ static int gsound_background_start()
     return result;
 }
 
-// 0x45219C
+// 0x449AC8
 static int gsound_speech_start()
 {
     if (gsound_debug) {
@@ -2054,7 +2020,7 @@ static int gsound_speech_start()
     return 0;
 }
 
-// 0x452208
+// 0x449B34
 static int gsound_get_music_path(char** out_value, const char* key)
 {
     int len;
@@ -2102,7 +2068,17 @@ static int gsound_get_music_path(char** out_value, const char* key)
     return -1;
 }
 
-// 0x452378
+// 0x449C7C
+static void gsound_check_active_effects()
+{
+    if (gsound_active_effect_counter < 0 || gsound_active_effect_counter > 4) {
+        if (gsound_debug) {
+            debug_printf("WARNING: %d active effects.\n", gsound_active_effect_counter);
+        }
+    }
+}
+
+// 0x449CA4
 static Sound* gsound_get_sound_ready_for_effect()
 {
     int rc;
@@ -2160,9 +2136,7 @@ static Sound* gsound_get_sound_ready_for_effect()
     return sound;
 }
 
-// Check file for existence.
-//
-// 0x4524E0
+// 0x449E08
 static bool gsound_file_exists_f(const char* fname)
 {
     FILE* f = fopen(fname, "rb");
@@ -2175,14 +2149,14 @@ static bool gsound_file_exists_f(const char* fname)
     return true;
 }
 
-// 0x4524FC
+// 0x449E24
 static int gsound_file_exists_db(const char* path)
 {
     dir_entry de;
     return db_dir_entry(path, &de) == 0;
 }
 
-// 0x452518
+// 0x449E40
 static int gsound_setup_paths()
 {
     // TODO: Incomplete.
