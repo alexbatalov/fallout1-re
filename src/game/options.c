@@ -18,6 +18,7 @@
 #include "game/scripts.h"
 #include "game/textobj.h"
 #include "game/tile.h"
+#include "game/worldmap.h"
 #include "plib/color/color.h"
 #include "plib/gnw/button.h"
 #include "plib/gnw/debug.h"
@@ -43,7 +44,7 @@ typedef enum Preference {
     PREF_COMBAT_DIFFICULTY,
     PREF_VIOLENCE_LEVEL,
     PREF_TARGET_HIGHLIGHT,
-    PREF_COMBAT_LOOKS,
+    PREF_RUNNING_BURNING_GUY,
     PREF_COMBAT_MESSAGES,
     PREF_COMBAT_TAUNTS,
     PREF_LANGUAGE_FILTER,
@@ -60,7 +61,7 @@ typedef enum Preference {
     PREF_MOUSE_SENSITIVIY,
     PREF_COUNT,
     FIRST_PRIMARY_PREF = PREF_GAME_DIFFICULTY,
-    LAST_PRIMARY_PREF = PREF_COMBAT_LOOKS,
+    LAST_PRIMARY_PREF = PREF_RUNNING_BURNING_GUY,
     PRIMARY_PREF_COUNT = LAST_PRIMARY_PREF - FIRST_PRIMARY_PREF + 1,
     FIRST_SECONDARY_PREF = PREF_COMBAT_MESSAGES,
     LAST_SECONDARY_PREF = PREF_ITEM_HIGHLIGHT,
@@ -144,7 +145,7 @@ static void SaveSettings();
 static void RestoreSettings();
 static void JustUpdate();
 
-// 0x48FBD0
+// 0x4812B0
 static const short row1Ytab[PRIMARY_PREF_COUNT] = {
     48,
     125,
@@ -153,7 +154,7 @@ static const short row1Ytab[PRIMARY_PREF_COUNT] = {
     363,
 };
 
-// 0x48FBDA
+// 0x4812BA
 static const short row2Ytab[SECONDARY_PREF_COUNT] = {
     49,
     116,
@@ -163,7 +164,7 @@ static const short row2Ytab[SECONDARY_PREF_COUNT] = {
     380,
 };
 
-// 0x48FBE6
+// 0x4812C6
 static const short row3Ytab[RANGE_PREF_COUNT] = {
     19,
     94,
@@ -176,7 +177,7 @@ static const short row3Ytab[RANGE_PREF_COUNT] = {
 };
 
 // x offsets for primary preferences from the knob position
-// 0x48FBF6
+// 0x4812D6
 static const short bglbx[PRIMARY_OPTION_VALUE_COUNT] = {
     2,
     25,
@@ -185,7 +186,7 @@ static const short bglbx[PRIMARY_OPTION_VALUE_COUNT] = {
 };
 
 // y offsets for primary preference option values from the knob position
-// 0x48FBFE
+// 0x4812DE
 static const short bglby[PRIMARY_OPTION_VALUE_COUNT] = {
     10,
     -4,
@@ -200,14 +201,14 @@ static const short smlbx[SECONDARY_OPTION_VALUE_COUNT] = {
     21,
 };
 
-// 0x5197C0
+// 0x505D30
 static int opgrphs[OPTIONS_WINDOW_FRM_COUNT] = {
     220, // opbase.frm - character editor
     222, // opbtnon.frm - character editor
     221, // opbtnoff.frm - character editor
 };
 
-// 0x5197CC
+// 0x505D3C
 static int prfgrphs[PREFERENCES_WINDOW_FRM_COUNT] = {
     240, // prefscrn.frm - options screen
     241, // prfsldof.frm - options screen
@@ -221,143 +222,143 @@ static int prfgrphs[PREFERENCES_WINDOW_FRM_COUNT] = {
     9, // lilreddn.frm - little red button down
 };
 
-// 0x6637D0
+// 0x661D30
 static Size ginfo[OPTIONS_WINDOW_FRM_COUNT];
 
-// 0x6637E8
+// 0x661D48
 static MessageList optn_msgfl;
 
-// 0x6637F0
+// 0x661D50
 static Size ginfo2[PREFERENCES_WINDOW_FRM_COUNT];
 
-// 0x663840
-static MessageListItem optnmesg;
-
-// 0x663850
+// 0x661DA0
 static unsigned char* prfbmp[PREFERENCES_WINDOW_FRM_COUNT];
 
-// 0x663878
+// 0x661DC8
 static unsigned char* opbtns[OPTIONS_WINDOW_BUTTONS_COUNT];
 
-// 0x6638A0
+// 0x661DF0
 static CacheEntry* grphkey2[PREFERENCES_WINDOW_FRM_COUNT];
 
-// 0x6638C8
+// 0x661E18
 static double text_delay_back;
 
-// 0x6638D0
-static double gamma_value;
-
-// 0x6638D8
+// 0x661E20
 static double gamma_value_back;
 
-// 0x6638E0
-static double text_delay;
-
-// 0x6638E8
-static double mouse_sens;
-
-// 0x6638F0
+// 0x661E28
 static double mouse_sens_back;
 
-// 0x6638F8
-static unsigned char* prefbuf;
+// 0x661E30
+static double gamma_value;
 
-// 0x6638FC
-static bool mouse_3d_was_on;
+// 0x661E38
+static double text_delay;
 
-// 0x663900
-static int optnwin;
+// 0x661E40
+static double mouse_sens;
 
-// 0x663904
-static int prfwin;
-
-// 0x663908
+// 0x661E48
 static unsigned char* winbuf;
 
-// 0x66390C
+// 0x661E4C
+static unsigned char* prefbuf;
+
+// 0x661E50
+static MessageListItem optnmesg;
+
+// 0x661E5C
 static CacheEntry* grphkey[OPTIONS_WINDOW_FRM_COUNT];
 
-// 0x663918
+// 0x661E68
+static bool mouse_3d_was_on;
+
+// 0x661E6C
+static int optnwin;
+
+// 0x661E70
+static int prfwin;
+
+// 0x661E74
 static unsigned char* opbmp[OPTIONS_WINDOW_FRM_COUNT];
 
 // This array stores backup for only integer-representable prefs. Because
 // `player_speedup` is not a part of prefs enum, it's value is stored in
 // `PREF_TEXT_BASE_DELAY`.
 //
-// 0x663924
+// 0x661E80
 static int settings_backup[PREF_COUNT];
 
-// 0x663970
-static int sndfx_volume;
-
-// 0x663974
-static int subtitles;
-
-// 0x663978
-static int language_filter;
-
-// 0x66397C
-static int speech_volume;
-
-// 0x663980
-static int master_volume;
-
-// 0x663984
-static int player_speedup;
-
-// 0x663988
-static int combat_taunts;
-
-// 0x66398C
+// 0x661ECC
 static int fontsave;
 
-// 0x663990
-static int music_volume;
-
-// 0x663994
-static bool bk_enable;
-
-// 0x663998
-static int prf_running;
-
-// 0x66399C
-static int combat_speed;
-
-// 0x6639A0
+// 0x661ED0
 static int plyrspdbid;
 
-// 0x6639A4
-static int item_highlight;
-
-// 0x6639A8
+// 0x661ED4
 static bool changed;
 
-// 0x6639AC
+// 0x661ED8
+static int sndfx_volume;
+
+// 0x661EDC
+static int subtitles;
+
+// 0x661EE0
+static int language_filter;
+
+// 0x661EE4
+static int speech_volume;
+
+// 0x661EE8
+static int master_volume;
+
+// 0x661EEC
+static int player_speedup;
+
+// 0x661EF0
+static int combat_taunts;
+
+// 0x661EF4
 static int combat_messages;
 
-// 0x6639B0
+// 0x661EF8
 static int target_highlight;
 
-// 0x6639B4
+// 0x661EFC
+static int music_volume;
+
+// 0x661F00
+static bool bk_enable;
+
+// 0x661F04
+static int prf_running;
+
+// 0x661F08
+static int combat_speed;
+
+// 0x661F0C
+static int item_highlight;
+
+// 0x661F10
+static int running_burning_guy;
+
+// 0x661F14
 static int combat_difficulty;
 
-// 0x6639B8
+// 0x661F18
 static int violence_level;
 
-// 0x6639BC
+// 0x661F1C
 static int game_difficulty;
 
-// 0x6639C0
-static int combatLookValue;
-
-// 0x5197F8
+// 0x505D68
 static PreferenceDescription btndat[PREF_COUNT] = {
     { 3, 0, 76, 71, 0, 0, { 203, 204, 205, 0 }, 0, GAME_CONFIG_GAME_DIFFICULTY_KEY, 0, 0, &game_difficulty },
     { 3, 0, 76, 149, 0, 0, { 206, 204, 208, 0 }, 0, GAME_CONFIG_COMBAT_DIFFICULTY_KEY, 0, 0, &combat_difficulty },
     { 4, 0, 76, 226, 0, 0, { 214, 215, 204, 216 }, 0, GAME_CONFIG_VIOLENCE_LEVEL_KEY, 0, 0, &violence_level },
     { 3, 0, 76, 309, 0, 0, { 202, 201, 213, 0 }, 0, GAME_CONFIG_TARGET_HIGHLIGHT_KEY, 0, 0, &target_highlight },
-    { 2, 0, 76, 387, 0, 0, { 202, 201, 0, 0 }, 0, GAME_CONFIG_COMBAT_LOOKS_KEY, 0, 0, &combatLookValue },
+    { 2, 0, 76, 387, 0, 0, { 202, 201, 0, 0 }, 0, GAME_CONFIG_RUNNING_BURNING_GUY_KEY, 0, 0, &running_burning_guy },
     { 2, 0, 299, 74, 0, 0, { 211, 212, 0, 0 }, 0, GAME_CONFIG_COMBAT_MESSAGES_KEY, 0, 0, &combat_messages },
     { 2, 0, 299, 141, 0, 0, { 202, 201, 0, 0 }, 0, GAME_CONFIG_COMBAT_TAUNTS_KEY, 0, 0, &combat_taunts },
     { 2, 0, 299, 207, 0, 0, { 202, 201, 0, 0 }, 0, GAME_CONFIG_LANGUAGE_FILTER_KEY, 0, 0, &language_filter },
@@ -374,14 +375,8 @@ static PreferenceDescription btndat[PREF_COUNT] = {
     { 2, 0, 374, 451, 0, 0, { 207, 218, 0, 0 }, 0, GAME_CONFIG_MOUSE_SENSITIVITY_KEY, 1.0, 2.5, NULL },
 };
 
-// 0x48FC48
+// 0x481328
 int do_options()
-{
-    return do_optionsFunc(-1);
-}
-
-// 0x48FC50
-int do_optionsFunc(int initialKeyCode)
 {
     if (OptnStart() == -1) {
         debug_printf("\nOPTION MENU: Error loading option dialog data!\n");
@@ -392,11 +387,6 @@ int do_optionsFunc(int initialKeyCode)
     while (rc == -1) {
         int keyCode = get_input();
         bool showPreferences = false;
-
-        if (initialKeyCode != -1) {
-            keyCode = initialKeyCode;
-            rc = 1;
-        }
 
         if (keyCode == KEY_ESCAPE || keyCode == 504 || game_user_wants_to_quit != 0) {
             rc = 0;
@@ -467,7 +457,7 @@ int do_optionsFunc(int initialKeyCode)
     return rc;
 }
 
-// 0x48FE14
+// 0x4814D8
 static int OptnStart()
 {
     fontsave = text_curr();
@@ -588,7 +578,7 @@ static int OptnStart()
     return 0;
 }
 
-// 0x490244
+// 0x481908
 static int OptnEnd()
 {
     win_delete(optnwin);
@@ -614,10 +604,10 @@ static int OptnEnd()
     return 0;
 }
 
-// 0x4902B0
-int PauseWindow(bool a1)
+// 0x481974
+int PauseWindow(bool is_world_map)
 {
-    // 0x48FC0C
+    // 0x4812EC
     static const int graphicIds[PAUSE_WINDOW_FRM_COUNT] = {
         208, // charwin.frm - character editor
         209, // donebox.frm - character editor
@@ -630,7 +620,7 @@ int PauseWindow(bool a1)
     Size frmSizes[PAUSE_WINDOW_FRM_COUNT];
 
     bool gameMouseWasVisible;
-    if (!a1) {
+    if (!is_world_map) {
         bk_enable = map_disable_bk_processes();
         cycle_disable();
 
@@ -641,7 +631,7 @@ int PauseWindow(bool a1)
     }
 
     gmouse_set_cursor(MOUSE_CURSOR_ARROW);
-    ShadeScreen(a1);
+    ShadeScreen(is_world_map);
 
     for (int index = 0; index < PAUSE_WINDOW_FRM_COUNT; index++) {
         int fid = art_id(OBJ_TYPE_INTERFACE, graphicIds[index], 0, 0, 0);
@@ -671,7 +661,7 @@ int PauseWindow(bool a1)
     int pauseWindowX = (640 - frmSizes[PAUSE_WINDOW_FRM_BACKGROUND].width) / 2;
     int pauseWindowY = (480 - frmSizes[PAUSE_WINDOW_FRM_BACKGROUND].height) / 2;
 
-    if (a1) {
+    if (is_world_map) {
         pauseWindowX -= 65;
         pauseWindowY -= 24;
     } else {
@@ -773,7 +763,7 @@ int PauseWindow(bool a1)
         }
     }
 
-    if (!a1) {
+    if (!is_world_map) {
         tile_refresh_display();
     }
 
@@ -785,7 +775,7 @@ int PauseWindow(bool a1)
 
     message_exit(&optn_msgfl);
 
-    if (!a1) {
+    if (!is_world_map) {
         if (gameMouseWasVisible) {
             gmouse_3d_on();
         }
@@ -804,11 +794,13 @@ int PauseWindow(bool a1)
     return 0;
 }
 
-// 0x490748
-static void ShadeScreen(bool a1)
+// 0x481E0C
+static void ShadeScreen(bool is_world_map)
 {
-    if (a1) {
+    if (is_world_map) {
         mouse_hide();
+        grey_buf(win_get_buf(world_win) + 640 * 21 + 22, 450, 442, 640);
+        win_draw(world_win);
     } else {
         mouse_hide();
         tile_refresh_display();
@@ -824,7 +816,7 @@ static void ShadeScreen(bool a1)
     mouse_show();
 }
 
-// 0x490798
+// 0x481E84
 static int do_prefscreen()
 {
     if (PrefStart() == -1) {
@@ -880,7 +872,7 @@ static int do_prefscreen()
     return rc;
 }
 
-// 0x4908A0
+// 0x481F8C
 static int PrefStart()
 {
     int i;
@@ -892,6 +884,7 @@ static int PrefStart()
     int height;
     int messageItemId;
     int btn;
+    int button_count;
 
     SaveSettings();
 
@@ -899,7 +892,7 @@ static int PrefStart()
         fid = art_id(OBJ_TYPE_INTERFACE, prfgrphs[i], 0, 0, 0);
         prfbmp[i] = art_lock(fid, &(grphkey2[i]), &(ginfo2[i].width), &(ginfo2[i].height));
         if (prfbmp[i] == NULL) {
-            for (; i != 0; i--) {
+            while (--i >= 0) {
                 art_ptr_unlock(grphkey2[i - 1]);
             }
             return -1;
@@ -935,11 +928,27 @@ static int PrefStart()
 
     text_font(103);
 
+    if (game_global_vars[603]) {
+        button_count = 5;
+    } else {
+        buf_to_buf(prfbmp[PREFERENCES_WINDOW_FRM_6],
+            ginfo2[PREFERENCES_WINDOW_FRM_6].width,
+            ginfo2[PREFERENCES_WINDOW_FRM_6].height,
+            ginfo2[PREFERENCES_WINDOW_FRM_6].width,
+            prefbuf + PREFERENCES_WINDOW_WIDTH * 356 + 0,
+            PREFERENCES_WINDOW_WIDTH);
+        button_count = 4;
+    }
+
     messageItemId = 101;
-    for (i = 0; i < PRIMARY_PREF_COUNT; i++) {
+    for (i = 0; i < button_count; i++) {
         messageItemText = getmsg(&optn_msgfl, &optnmesg, messageItemId++);
         x = 99 - text_width(messageItemText) / 2;
         text_to_buf(prefbuf + PREFERENCES_WINDOW_WIDTH * row1Ytab[i] + x, messageItemText, PREFERENCES_WINDOW_WIDTH, PREFERENCES_WINDOW_WIDTH, colorTable[18979]);
+    }
+
+    if (!game_global_vars[603]) {
+        messageItemId++;
     }
 
     for (i = 0; i < SECONDARY_PREF_COUNT; i++) {
@@ -1091,7 +1100,7 @@ static int PrefStart()
     return 0;
 }
 
-// 0x490E8C
+// 0x4825DC
 static void DoThing(int eventCode)
 {
     int x;
@@ -1389,7 +1398,7 @@ static void DoThing(int eventCode)
     changed = true;
 }
 
-// 0x491A68
+// 0x483170
 static void UpdateThing(int index)
 {
     text_font(101);
@@ -1397,7 +1406,7 @@ static void UpdateThing(int index)
     PreferenceDescription* meta = &(btndat[index]);
 
     if (index >= FIRST_PRIMARY_PREF && index <= LAST_PRIMARY_PREF) {
-        // 0x48FC1C
+        // 0x4812FC
         static const int offsets[PRIMARY_PREF_COUNT] = {
             66, // game difficulty
             143, // combat difficulty
@@ -1407,6 +1416,10 @@ static void UpdateThing(int index)
         };
 
         int primaryOptionIndex = index - FIRST_PRIMARY_PREF;
+
+        if (primaryOptionIndex == PREF_RUNNING_BURNING_GUY && !game_global_vars[603]) {
+            return;
+        }
 
         buf_to_buf(prfbmp[PREFERENCES_WINDOW_FRM_BACKGROUND] + 640 * offsets[primaryOptionIndex] + 23, 160, 54, 640, prefbuf + 640 * offsets[primaryOptionIndex] + 23, 640);
 
@@ -1455,7 +1468,7 @@ static void UpdateThing(int index)
         int value = *(meta->valuePtr);
         trans_buf_to_buf(prfbmp[PREFERENCES_WINDOW_FRM_PRIMARY_SWITCH] + (46 * 47) * value, 46, 47, 46, prefbuf + 640 * meta->knobY + meta->knobX, 640);
     } else if (index >= FIRST_SECONDARY_PREF && index <= LAST_SECONDARY_PREF) {
-        // 0x48FC30
+        // 0x481310
         static const int offsets[SECONDARY_PREF_COUNT] = {
             66, // combat messages
             133, // combat taunts
@@ -1618,7 +1631,7 @@ static void UpdateThing(int index)
     // return true;
 }
 
-// 0x492870
+// 0x483F28
 static int PrefEnd()
 {
     if (changed) {
@@ -1636,7 +1649,7 @@ static int PrefEnd()
     return 0;
 }
 
-// 0x4928B8
+// 0x483F70
 int init_options_menu()
 {
     for (int index = 0; index < 11; index++) {
@@ -1650,7 +1663,7 @@ int init_options_menu()
     return 0;
 }
 
-// 0x4928E4
+// 0x483F9C
 void IncGamma()
 {
     gamma_value = GAMMA_MIN;
@@ -1675,7 +1688,7 @@ void IncGamma()
     }
 }
 
-// 0x4929C8
+// 0x48407C
 void DecGamma()
 {
     gamma_value = GAMMA_MIN;
@@ -1700,7 +1713,7 @@ void DecGamma()
     }
 }
 
-// 0x492AA8
+// 0x484158
 static void SetSystemPrefs()
 {
     SetDefaults(false);
@@ -1710,7 +1723,7 @@ static void SetSystemPrefs()
     config_get_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_VIOLENCE_LEVEL_KEY, &violence_level);
     config_get_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_TARGET_HIGHLIGHT_KEY, &target_highlight);
     config_get_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_COMBAT_MESSAGES_KEY, &combat_messages);
-    config_get_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_COMBAT_LOOKS_KEY, &combatLookValue);
+    config_get_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_RUNNING_BURNING_GUY_KEY, &running_burning_guy);
     config_get_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_COMBAT_TAUNTS_KEY, &combat_taunts);
     config_get_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_LANGUAGE_FILTER_KEY, &language_filter);
     config_get_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_RUNNING_KEY, &prf_running);
@@ -1729,7 +1742,7 @@ static void SetSystemPrefs()
     JustUpdate();
 }
 
-// 0x492CB0
+// 0x484360
 static int SavePrefs(bool save)
 {
     config_set_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_GAME_DIFFICULTY_KEY, game_difficulty);
@@ -1737,7 +1750,7 @@ static int SavePrefs(bool save)
     config_set_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_VIOLENCE_LEVEL_KEY, violence_level);
     config_set_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_TARGET_HIGHLIGHT_KEY, target_highlight);
     config_set_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_COMBAT_MESSAGES_KEY, combat_messages);
-    config_set_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_COMBAT_LOOKS_KEY, combatLookValue);
+    config_set_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_COMBAT_LOOKS_KEY, running_burning_guy);
     config_set_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_COMBAT_TAUNTS_KEY, combat_taunts);
     config_set_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_LANGUAGE_FILTER_KEY, language_filter);
     config_set_value(&game_config, GAME_CONFIG_PREFERENCES_KEY, GAME_CONFIG_RUNNING_KEY, prf_running);
@@ -1773,14 +1786,14 @@ static int SavePrefs(bool save)
     return 0;
 }
 
-// 0x492F60
+// 0x48460C
 static void SetDefaults(bool a1)
 {
     combat_difficulty = COMBAT_DIFFICULTY_NORMAL;
     violence_level = VIOLENCE_LEVEL_MAXIMUM_BLOOD;
     target_highlight = TARGET_HIGHLIGHT_TARGETING_ONLY;
     combat_messages = 1;
-    combatLookValue = 0;
+    running_burning_guy = 1;
     combat_taunts = 1;
     prf_running = 0;
     subtitles = 0;
@@ -1807,14 +1820,14 @@ static void SetDefaults(bool a1)
     }
 }
 
-// 0x493054
+// 0x484704
 static void SaveSettings()
 {
     settings_backup[PREF_GAME_DIFFICULTY] = game_difficulty;
     settings_backup[PREF_COMBAT_DIFFICULTY] = combat_difficulty;
     settings_backup[PREF_VIOLENCE_LEVEL] = violence_level;
     settings_backup[PREF_TARGET_HIGHLIGHT] = target_highlight;
-    settings_backup[PREF_COMBAT_LOOKS] = combatLookValue;
+    settings_backup[PREF_RUNNING_BURNING_GUY] = running_burning_guy;
     settings_backup[PREF_COMBAT_MESSAGES] = combat_messages;
     settings_backup[PREF_COMBAT_TAUNTS] = combat_taunts;
     settings_backup[PREF_LANGUAGE_FILTER] = language_filter;
@@ -1832,14 +1845,14 @@ static void SaveSettings()
     settings_backup[PREF_SPEECH_VOLUME] = speech_volume;
 }
 
-// 0x493128
+// 0x4847D4
 static void RestoreSettings()
 {
     game_difficulty = settings_backup[PREF_GAME_DIFFICULTY];
     combat_difficulty = settings_backup[PREF_COMBAT_DIFFICULTY];
     violence_level = settings_backup[PREF_VIOLENCE_LEVEL];
     target_highlight = settings_backup[PREF_TARGET_HIGHLIGHT];
-    combatLookValue = settings_backup[PREF_COMBAT_LOOKS];
+    running_burning_guy = settings_backup[PREF_RUNNING_BURNING_GUY];
     combat_messages = settings_backup[PREF_COMBAT_MESSAGES];
     combat_taunts = settings_backup[PREF_COMBAT_TAUNTS];
     language_filter = settings_backup[PREF_LANGUAGE_FILTER];
@@ -1859,7 +1872,7 @@ static void RestoreSettings()
     JustUpdate();
 }
 
-// 0x4931F8
+// 0x4848A4
 static void JustUpdate()
 {
     game_difficulty = min(max(game_difficulty, 0), 2);
@@ -1867,7 +1880,7 @@ static void JustUpdate()
     violence_level = min(max(violence_level, 0), 3);
     target_highlight = min(max(target_highlight, 0), 2);
     combat_messages = min(max(combat_messages, 0), 1);
-    combatLookValue = min(max(combatLookValue, 0), 1);
+    running_burning_guy = min(max(running_burning_guy, 0), 1);
     combat_taunts = min(max(combat_taunts, 0), 1);
     language_filter = min(max(language_filter, 0), 1);
     prf_running = min(max(prf_running, 0), 1);
@@ -1900,7 +1913,7 @@ static void JustUpdate()
     colorGamma(gamma_value);
 }
 
-// 0x493224
+// 0x4848C8
 int save_options(DB_FILE* stream)
 {
     float textBaseDelay = (float)text_delay;
@@ -1911,7 +1924,7 @@ int save_options(DB_FILE* stream)
     if (db_fwriteInt(stream, combat_difficulty) == -1) goto err;
     if (db_fwriteInt(stream, violence_level) == -1) goto err;
     if (db_fwriteInt(stream, target_highlight) == -1) goto err;
-    if (db_fwriteInt(stream, combatLookValue) == -1) goto err;
+    if (db_fwriteInt(stream, running_burning_guy) == -1) goto err;
     if (db_fwriteInt(stream, combat_messages) == -1) goto err;
     if (db_fwriteInt(stream, combat_taunts) == -1) goto err;
     if (db_fwriteInt(stream, language_filter) == -1) goto err;
@@ -1937,7 +1950,7 @@ err:
     return -1;
 }
 
-// 0x49340C
+// 0x484AAC
 int load_options(DB_FILE* stream)
 {
     float textBaseDelay;
@@ -1950,7 +1963,7 @@ int load_options(DB_FILE* stream)
     if (db_freadInt(stream, &combat_difficulty) == -1) goto err;
     if (db_freadInt(stream, &violence_level) == -1) goto err;
     if (db_freadInt(stream, &target_highlight) == -1) goto err;
-    if (db_freadInt(stream, &combatLookValue) == -1) goto err;
+    if (db_freadInt(stream, &running_burning_guy) == -1) goto err;
     if (db_freadInt(stream, &combat_messages) == -1) goto err;
     if (db_freadInt(stream, &combat_taunts) == -1) goto err;
     if (db_freadInt(stream, &language_filter) == -1) goto err;
