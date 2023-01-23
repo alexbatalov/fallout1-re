@@ -1203,6 +1203,29 @@ int register_object_funset(Object* object, int flag, int delay)
     return 0;
 }
 
+// 0x414B78
+int register_object_flatten(Object* object, int delay)
+{
+    AnimationSequence* animationSequence;
+    AnimationDescription* animationDescription;
+
+    if (check_registry(object) == -1) {
+        anim_cleanup();
+        return -1;
+    }
+
+    animationSequence = &(anim_set[curr_anim_set]);
+    animationDescription = &(animationSequence->animations[curr_anim_counter]);
+    animationDescription->kind = ANIM_KIND_TOGGLE_FLAT;
+    animationDescription->artCacheKey = NULL;
+    animationDescription->owner = object;
+    animationDescription->delay = delay;
+
+    curr_anim_counter++;
+
+    return 0;
+}
+
 // 0x414BF4
 int register_object_change_fid(Object* owner, int fid, int delay)
 {

@@ -138,6 +138,7 @@ int register_object_call3(void* a1, void* a2, void* a3, AnimationCallback3* proc
 int register_object_must_call(void* a1, void* a2, AnimationCallback* proc, int delay);
 int register_object_fset(Object* object, int flag, int delay);
 int register_object_funset(Object* object, int flag, int delay);
+int register_object_flatten(Object* object, int delay);
 int register_object_change_fid(Object* owner, int fid, int delay);
 int register_object_take_out(Object* owner, int weaponAnimationCode, int delay);
 int register_object_light(Object* owner, int lightDistance, int delay);
