@@ -31,7 +31,6 @@
 
 #define HEALABLE_DAMAGE_FLAGS_LENGTH 5
 
-static int skillLevelCost(int a1);
 static void show_skill_use_messages(Object* obj, int skill, Object* a3, int a4, int a5);
 static int skill_game_difficulty(int skill);
 static int skill_use_slot_available(int skill);
