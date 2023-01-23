@@ -8,19 +8,19 @@
 #include "plib/gnw/debug.h"
 #include "plib/gnw/input.h"
 
-// 0x6639D0
+// 0x661F20
 static unsigned char current_palette[256 * 3];
 
-// 0x663CD0
+// 0x662220
 unsigned char white_palette[256 * 3];
 
-// 0x663FD0
+// 0x662520
 unsigned char black_palette[256 * 3];
 
-// 0x6642D0
+// 0x662820
 static int fade_steps;
 
-// 0x493A00
+// 0x485090
 void palette_init()
 {
     memset(black_palette, 0, 256 * 3);
@@ -52,17 +52,17 @@ void palette_init()
     debug_printf("\nFade time is %u\nFade steps are %d\n", diff, fade_steps);
 }
 
-// NOTE: Uncollapsed 0x493AD0.
+// 0x485160
 void palette_reset()
 {
 }
 
-// NOTE: Uncollapsed 0x493AD0.
+// 0x485160
 void palette_exit()
 {
 }
 
-// 0x493AD4
+// 0x485164
 void palette_fade_to(unsigned char* palette)
 {
     bool colorCycleWasEnabled = cycle_is_enabled();
@@ -82,14 +82,14 @@ void palette_fade_to(unsigned char* palette)
     }
 }
 
-// 0x493B48
+// 0x4851D8
 void palette_set_to(unsigned char* palette)
 {
     memcpy(current_palette, palette, sizeof(current_palette));
     setSystemPalette(palette);
 }
 
-// 0x493B78
+// 0x485208
 void palette_set_entries(unsigned char* palette, int start, int end)
 {
     memcpy(current_palette + 3 * start, palette, 3 * (end - start + 1));
