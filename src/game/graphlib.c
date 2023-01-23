@@ -10,34 +10,34 @@ static void InitTree();
 static void InsertNode(int a1);
 static void DeleteNode(int a1);
 
-// 0x596D90
+// 0x59532C
 static unsigned char GreyTable[256];
 
-// 0x596E90
+// 0x59542C
 int* dad;
 
-// 0x596E94
+// 0x595430
 int match_length;
 
-// 0x596E98
+// 0x595434
 int textsize;
 
-// 0x596E9C
+// 0x595438
 int* rson;
 
-// 0x596EA0
+// 0x59543C
 int* lson;
 
-// 0x596EA4
+// 0x595440
 unsigned char* text_buf;
 
-// 0x596EA8
+// 0x595444
 int codesize;
 
-// 0x596EAC
+// 0x595448
 int match_position;
 
-// 0x44EBC0
+// 0x4464F0
 int HighRGB(int a1)
 {
     // TODO: Some strange bit arithmetic.
@@ -105,7 +105,7 @@ void bit1exbit8(int ulx, int uly, int lrx, int lry, int offset_x, int offset_y, 
     }
 }
 
-// 0x44F250
+// 0x446B80
 int CompLZS(unsigned char* a1, unsigned char* a2, int a3)
 {
     dad = NULL;
@@ -278,7 +278,7 @@ int CompLZS(unsigned char* a1, unsigned char* a2, int a3)
     return v4;
 }
 
-// 0x44F5F0
+// 0x446F20
 static void InitTree()
 {
     for (int index = 4097; index < 4353; index++) {
@@ -290,7 +290,7 @@ static void InitTree()
     }
 }
 
-// 0x44F63C
+// 0x446F6C
 static void InsertNode(int a1)
 {
     lson[a1] = 4096;
@@ -356,7 +356,7 @@ static void InsertNode(int a1)
     dad[v21] = 4096;
 }
 
-// 0x44F7EC
+// 0x44711C
 static void DeleteNode(int a1)
 {
     if (dad[a1] != 4096) {
@@ -396,7 +396,7 @@ static void DeleteNode(int a1)
     }
 }
 
-// 0x44F92C
+// 0x44725C
 int DecodeLZS(unsigned char* src, unsigned char* dest, int length)
 {
     text_buf = (unsigned char*)mem_malloc(sizeof(*text_buf) * 4122);
@@ -455,7 +455,7 @@ int DecodeLZS(unsigned char* src, unsigned char* dest, int length)
     return 0;
 }
 
-// 0x44FA78
+// 0x4473A8
 void InitGreyTable(int a1, int a2)
 {
     if (a1 >= 0 && a2 <= 255) {
@@ -474,7 +474,7 @@ void InitGreyTable(int a1, int a2)
     }
 }
 
-// 0x44FC40
+// 0x447570
 void grey_buf(unsigned char* buffer, int width, int height, int pitch)
 {
     unsigned char* ptr = buffer;
