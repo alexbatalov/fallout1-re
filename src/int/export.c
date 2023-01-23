@@ -30,15 +30,13 @@ static ExternalVariable* findVar(const char* identifier);
 static ExternalVariable* findEmptyVar(const char* identifier);
 static void removeProgramReferences(Program* program);
 
-// 0x570C00
+// 0x56EED0
 static ExternalProcedure procHashTable[1013];
 
-// 0x57BA1C
+// 0x579CEC
 static ExternalVariable varHashTable[1013];
 
-// NOTE: Inlined.
-//
-// 0x440F10
+// 0x439A10
 static unsigned int hashName(const char* identifier)
 {
     unsigned int v1 = 0;
@@ -53,7 +51,7 @@ static unsigned int hashName(const char* identifier)
     return v1;
 }
 
-// 0x440F58
+// 0x439A58
 static ExternalProcedure* findProc(const char* identifier)
 {
     // NOTE: Uninline.
@@ -84,7 +82,7 @@ static ExternalProcedure* findProc(const char* identifier)
     return NULL;
 }
 
-// 0x441018
+// 0x439B18
 static ExternalProcedure* findEmptyProc(const char* identifier)
 {
     // NOTE: Uninline.
@@ -111,7 +109,7 @@ static ExternalProcedure* findEmptyProc(const char* identifier)
     return NULL;
 }
 
-// 0x4410AC
+// 0x439BAC
 static ExternalVariable* findVar(const char* identifier)
 {
     // NOTE: Uninline.
@@ -143,9 +141,7 @@ static ExternalVariable* findVar(const char* identifier)
     return NULL;
 }
 
-// NOTE: Unused.
-//
-// 0x441164
+// 0x439C64
 int exportGetVariable(const char* identifier, opcode_t* typePtr, int* valuePtr)
 {
     ExternalVariable* variable;
@@ -163,7 +159,7 @@ int exportGetVariable(const char* identifier, opcode_t* typePtr, int* valuePtr)
     return 0;
 }
 
-// 0x44118C
+// 0x439C8C
 static ExternalVariable* findEmptyVar(const char* identifier)
 {
     // NOTE: Uninline.
@@ -190,9 +186,7 @@ static ExternalVariable* findEmptyVar(const char* identifier)
     return NULL;
 }
 
-// NOTE: Unused.
-//
-// 0x441220
+// 0x439D20
 int exportStoreStringVariable(const char* identifier, const char* value)
 {
     ExternalVariable* variable;
@@ -212,7 +206,7 @@ int exportStoreStringVariable(const char* identifier, const char* value)
     return 1;
 }
 
-// 0x44127C
+// 0x439D7C
 int exportStoreVariable(Program* program, const char* name, opcode_t opcode, int data)
 {
     ExternalVariable* exportedVariable = findVar(name);
@@ -240,9 +234,7 @@ int exportStoreVariable(Program* program, const char* name, opcode_t opcode, int
     return 0;
 }
 
-// NOTE: Unused.
-//
-// 0x441330
+// 0x439E30
 int exportStoreVariableByTag(const char* identifier, opcode_t type, int value)
 {
     ExternalVariable* variable;
@@ -268,7 +260,7 @@ int exportStoreVariableByTag(const char* identifier, opcode_t type, int value)
     return 1;
 }
 
-// 0x4413D4
+// 0x439ED4
 int exportFetchVariable(Program* program, const char* name, opcode_t* opcodePtr, int* dataPtr)
 {
     ExternalVariable* exportedVariable = findVar(name);
@@ -287,7 +279,7 @@ int exportFetchVariable(Program* program, const char* name, opcode_t* opcodePtr,
     return 0;
 }
 
-// 0x4414B8
+// 0x439FB8
 int exportExportVariable(Program* program, const char* identifier)
 {
     const char* programName = program->name;
@@ -319,7 +311,7 @@ int exportExportVariable(Program* program, const char* identifier)
     return 0;
 }
 
-// 0x4414FC
+// 0x439FFC
 static void removeProgramReferences(Program* program)
 {
     for (int index = 0; index < 1013; index++) {
@@ -331,13 +323,13 @@ static void removeProgramReferences(Program* program)
     }
 }
 
-// 0x44152C
+// 0x43A02C
 void initExport()
 {
     interpretRegisterProgramDeleteCallback(removeProgramReferences);
 }
 
-// 0x441538
+// 0x43A038
 void exportClose()
 {
     for (int index = 0; index < 1013; index++) {
@@ -353,7 +345,7 @@ void exportClose()
     }
 }
 
-// 0x44158C
+// 0x43A08C
 Program* exportFindProcedure(const char* identifier, int* addressPtr, int* argumentCountPtr)
 {
     ExternalProcedure* externalProcedure = findProc(identifier);
@@ -371,7 +363,7 @@ Program* exportFindProcedure(const char* identifier, int* addressPtr, int* argum
     return externalProcedure->program;
 }
 
-// 0x4415B0
+// 0x43A0B0
 int exportExportProcedure(Program* program, const char* identifier, int address, int argumentCount)
 {
     ExternalProcedure* externalProcedure = findProc(identifier);
@@ -395,7 +387,7 @@ int exportExportProcedure(Program* program, const char* identifier, int address,
     return 0;
 }
 
-// 0x441824
+// 0x43A324
 void exportClearAllVariables()
 {
     for (int index = 0; index < 1013; index++) {
