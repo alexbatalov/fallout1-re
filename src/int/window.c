@@ -3090,7 +3090,7 @@ void alphaBltBuf(unsigned char* src, int srcWidth, int srcHeight, int srcPitch, 
 }
 
 // 0x4BBFC4
-void alphaBltBufRect(unsigned char* src, int srcWidth, int srcHeight, unsigned char* dest, int destWidth, int destHeight)
+void fillBuf3x3(unsigned char* src, int srcWidth, int srcHeight, unsigned char* dest, int destWidth, int destHeight)
 {
     int chunkWidth = srcWidth / 3;
     int chunkHeight = srcHeight / 3;

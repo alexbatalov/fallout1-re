@@ -55,8 +55,8 @@ static void op_addregion(Program* program);
 static void op_saystartpos(Program* program);
 static void op_sayreplytitle(Program* program);
 static void op_saygotoreply(Program* program);
-static void op_sayreply(Program* program);
 static void op_sayoption(Program* program);
+static void op_sayreply(Program* program);
 static int checkDialog(Program* program);
 static void op_sayend(Program* program);
 static void op_saygetlastpos(Program* program);
@@ -117,45 +117,41 @@ static void op_sounddelete(Program* program);
 static void op_setoneoptpause(Program* program);
 static bool intLibDoInput(int key);
 
-// 0x519038
+// 0x505620
 static int TimeOut = 0;
 
-// 0x59D5D0
+// 0x59BB60
 static Sound* interpretSounds[INT_LIB_SOUNDS_CAPACITY];
 
-// 0x59D650
+// 0x59BBE0
 static unsigned char blackPal[256 * 3];
 
-// 0x59D950
+// 0x59BEE0
 static IntLibKeyHandlerEntry inputProc[INT_LIB_KEY_HANDLERS_CAPACITY];
 
-// 0x59E150
+// 0x59C6E0
 static bool currentlyFadedIn;
 
-// 0x59E154
+// 0x59C6E4
 static int anyKeyOffset;
 
-// 0x59E158
+// 0x59C6E8
 static int numCallbacks;
 
-// 0x59E15C
+// 0x59C6EC
 static Program* anyKeyProg;
 
-// 0x59E160
+// 0x59C6F0
 static IntLibProgramDeleteCallback** callbacks;
 
-// 0x59E164
+// 0x59C6F4
 static int sayStartingPosition;
 
-// 0x461780
+// 0x456CC0
 static void op_fillwin3x3(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
         interpretError("Invalid type given to fillwin3x3");
@@ -173,7 +169,7 @@ static void op_fillwin3x3(Program* program)
 
     selectWindowID(program->windowId);
 
-    alphaBltBufRect(imageData,
+    fillBuf3x3(imageData,
         imageWidth,
         imageHeight,
         windowGetBuffer(),
@@ -183,7 +179,7 @@ static void op_fillwin3x3(Program* program)
     myfree(imageData, __FILE__, __LINE__); // "..\\int\\INTLIB.C", 94
 }
 
-// 0x461850
+// 0x456D74
 static void op_format(Program* program)
 {
     opcode_t opcode[6];
@@ -193,10 +189,6 @@ static void op_format(Program* program)
     for (int arg = 0; arg < 6; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[0] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
@@ -235,17 +227,13 @@ static void op_format(Program* program)
     }
 }
 
-// 0x461A5C
+// 0x456EE8
 static void op_print(Program* program)
 {
     selectWindowID(program->windowId);
 
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     switch (opcode & VALUE_TYPE_MASK) {
     case VALUE_TYPE_STRING:
@@ -260,7 +248,7 @@ static void op_print(Program* program)
     }
 }
 
-// 0x461B10
+// 0x456F80
 static void op_selectfilelist(Program* program)
 {
     program->flags |= PROGRAM_FLAG_0x20;
@@ -272,10 +260,6 @@ static void op_selectfilelist(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[0] & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
@@ -317,7 +301,7 @@ static void op_selectfilelist(Program* program)
     program->flags &= ~PROGRAM_FLAG_0x20;
 }
 
-// 0x461CA0
+// 0x4570DC
 static void op_tokenize(Program* program)
 {
     opcode_t opcode[3];
@@ -326,20 +310,12 @@ static void op_tokenize(Program* program)
     opcode[0] = interpretPopShort(program);
     data[0] = interpretPopLong(program);
 
-    if (opcode[0] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode[0], data[0]);
-    }
-
     if ((opcode[0] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Error, invalid arg 3 to tokenize.");
     }
 
     opcode[1] = interpretPopShort(program);
     data[1] = interpretPopLong(program);
-
-    if (opcode[1] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode[1], data[1]);
-    }
 
     char* prev = NULL;
     if ((opcode[1] & VALUE_TYPE_MASK) == VALUE_TYPE_INT) {
@@ -354,10 +330,6 @@ static void op_tokenize(Program* program)
 
     opcode[2] = interpretPopShort(program);
     data[2] = interpretPopLong(program);
-
-    if (opcode[2] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode[2], data[2]);
-    }
 
     if ((opcode[2] & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
         interpretError("Error, invalid arg 1 to tokenize.");
@@ -415,7 +387,7 @@ static void op_tokenize(Program* program)
     }
 }
 
-// 0x461F1C
+// 0x457308
 static void op_printrect(Program* program)
 {
     selectWindowID(program->windowId);
@@ -427,10 +399,6 @@ static void op_printrect(Program* program)
     for (int arg = 0; arg < 3; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[0] & VALUE_TYPE_MASK) != VALUE_TYPE_INT || data[0] > 2) {
@@ -459,15 +427,11 @@ static void op_printrect(Program* program)
     }
 }
 
-// 0x46209C
+// 0x457430
 static void op_selectwin(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
         interpretError("Invalid type given to select");
@@ -484,15 +448,11 @@ static void op_selectwin(Program* program)
     interpretOutputFunc(windowOutput);
 }
 
-// 0x46213C
+// 0x4574B4
 static void op_display(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
         interpretError("Invalid type given to display");
@@ -506,15 +466,11 @@ static void op_display(Program* program)
     displayFile(mangledFileName);
 }
 
-// 0x4621B4
+// 0x457514
 static void op_displayraw(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
         interpretError("Invalid type given to displayraw");
@@ -528,7 +484,7 @@ static void op_displayraw(Program* program)
     displayFileRaw(mangledFileName);
 }
 
-// 0x46222C
+// 0x457574
 static void interpretFadePaletteBK(unsigned char* oldPalette, unsigned char* newPalette, int a3, float duration, int shouldProcessBk)
 {
     unsigned int time;
@@ -570,23 +526,19 @@ static void interpretFadePaletteBK(unsigned char* oldPalette, unsigned char* new
     setSystemPalette(newPalette);
 }
 
-// NOTE: Unused.
-//
-// 0x462330
+// 0x457678
 void interpretFadePalette(unsigned char* oldPalette, unsigned char* newPalette, int a3, float duration)
 {
     interpretFadePaletteBK(oldPalette, newPalette, a3, duration, 1);
 }
 
-// NOTE: Unused.
+// 0x457688
 int intlibGetFadeIn()
 {
     return currentlyFadedIn;
 }
 
-// NOTE: Inlined.
-//
-// 0x462348
+// 0x457690
 void interpretFadeOut(float duration)
 {
     int cursorWasHidden;
@@ -601,17 +553,13 @@ void interpretFadeOut(float duration)
     }
 }
 
-// NOTE: Inlined.
-//
-// 0x462380
+// 0x4576C8
 void interpretFadeIn(float duration)
 {
     interpretFadePaletteBK(blackPal, cmap, 64, duration, 1);
 }
 
-// NOTE: Unused.
-//
-// 0x4623A4
+// 0x4576EC
 void interpretFadeOutNoBK(float duration)
 {
     int cursorWasHidden;
@@ -626,23 +574,17 @@ void interpretFadeOutNoBK(float duration)
     }
 }
 
-// NOTE: Unused.
-//
-// 0x4623DC
+// 0x457724
 void interpretFadeInNoBK(float duration)
 {
     interpretFadePaletteBK(blackPal, cmap, 64, duration, 0);
 }
 
-// 0x462400
+// 0x457748
 static void op_fadein(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid type given to fadein\n");
@@ -660,15 +602,11 @@ static void op_fadein(Program* program)
     program->flags &= ~PROGRAM_FLAG_0x20;
 }
 
-// 0x4624B4
+// 0x4577E0
 static void op_fadeout(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         // FIXME: Wrong function name, should be fadeout.
@@ -685,7 +623,7 @@ static void op_fadeout(Program* program)
     program->flags &= ~PROGRAM_FLAG_0x20;
 }
 
-// 0x462570
+// 0x457884
 int checkMovie(Program* program)
 {
     if (dialogGetDialogDepth() > 0) {
@@ -695,33 +633,25 @@ int checkMovie(Program* program)
     return windowMoviePlaying();
 }
 
-// 0x462584
+// 0x457898
 static void op_movieflags(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if (!windowSetMovieFlags(data)) {
         interpretError("Error setting movie flags\n");
     }
 }
 
-// 0x4625D0
+// 0x4578C0
 static void op_playmovie(Program* program)
 {
-    // 0x59E168
+    // 0x59C6F8
     static char name[100];
 
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
         interpretError("Invalid type given to playmovie");
@@ -744,10 +674,10 @@ static void op_playmovie(Program* program)
     }
 }
 
-// 0x4626C4
+// 0x45799C
 static void op_playmovierect(Program* program)
 {
-    // 0x59E1CC
+    // 0x59C75C
     static char name[100];
 
     opcode_t opcode[5];
@@ -757,10 +687,6 @@ static void op_playmovierect(Program* program)
     for (int arg = 0; arg < 5; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[4] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
@@ -785,22 +711,18 @@ static void op_playmovierect(Program* program)
     }
 }
 
-// 0x46287C
+// 0x457ADC
 static void op_stopmovie(Program* program)
 {
     windowStopMovie();
     program->flags |= PROGRAM_FLAG_0x40;
 }
 
-// 0x462890
+// 0x457AF0
 static void op_deleteregion(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
         if ((opcode & VALUE_TYPE_MASK) == VALUE_TYPE_INT && data != -1) {
@@ -814,7 +736,7 @@ static void op_deleteregion(Program* program)
     windowDeleteRegion(regionName);
 }
 
-// 0x462924
+// 0x457B6C
 static void op_activateregion(Program* program)
 {
     opcode_t opcode[2];
@@ -824,25 +746,17 @@ static void op_activateregion(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     const char* regionName = interpretGetString(program, opcode[1], data[1]);
     windowActivateRegion(regionName, data[0]);
 }
 
-// 0x4629A0
+// 0x457BAC
 static void op_checkregion(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
         interpretError("Invalid arg 1 given to checkregion();\n");
@@ -855,7 +769,7 @@ static void op_checkregion(Program* program)
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x462A1C
+// 0x457C0C
 static void op_addregion(Program* program)
 {
     opcode_t opcode;
@@ -863,10 +777,6 @@ static void op_addregion(Program* program)
 
     opcode = interpretPopShort(program);
     data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid number of elements given to region");
@@ -886,10 +796,6 @@ static void op_addregion(Program* program)
         opcode = interpretPopShort(program);
         data = interpretPopLong(program);
 
-        if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode, data);
-        }
-
         if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
             interpretError("Invalid y value given to region");
         }
@@ -898,10 +804,6 @@ static void op_addregion(Program* program)
 
         opcode = interpretPopShort(program);
         data = interpretPopLong(program);
-
-        if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode, data);
-        }
 
         if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
             interpretError("Invalid x value given to region");
@@ -923,10 +825,6 @@ static void op_addregion(Program* program)
         opcode = interpretPopShort(program);
         data = interpretPopLong(program);
 
-        if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode, data);
-        }
-
         if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_STRING && opcode == VALUE_TYPE_INT) {
             if (data != 0) {
                 interpretError("Invalid name given to region");
@@ -939,7 +837,7 @@ static void op_addregion(Program* program)
     }
 }
 
-// 0x462C10
+// 0x457D90
 static void op_addregionproc(Program* program)
 {
     opcode_t opcode[5];
@@ -949,10 +847,6 @@ static void op_addregionproc(Program* program)
     for (int arg = 0; arg < 5; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[0] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
@@ -983,7 +877,7 @@ static void op_addregionproc(Program* program)
     }
 }
 
-// 0x462DDC
+// 0x457EDC
 static void op_addregionrightproc(Program* program)
 {
     opcode_t opcode[3];
@@ -993,10 +887,6 @@ static void op_addregionrightproc(Program* program)
     for (int arg = 0; arg < 3; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[0] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
@@ -1019,7 +909,7 @@ static void op_addregionrightproc(Program* program)
     }
 }
 
-// 0x462F08
+// 0x457FB4
 static void op_createwin(Program* program)
 {
     opcode_t opcode[5];
@@ -1029,10 +919,6 @@ static void op_createwin(Program* program)
     for (int arg = 0; arg < 5; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     const char* windowName = interpretGetString(program, opcode[4], data[4]);
@@ -1046,7 +932,7 @@ static void op_createwin(Program* program)
     }
 }
 
-// 0x46308C
+// 0x4580B4
 static void op_resizewin(Program* program)
 {
     opcode_t opcode[5];
@@ -1056,10 +942,6 @@ static void op_resizewin(Program* program)
     for (int arg = 0; arg < 5; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     const char* windowName = interpretGetString(program, opcode[4], data[4]);
@@ -1073,7 +955,7 @@ static void op_resizewin(Program* program)
     }
 }
 
-// 0x463204
+// 0x4581A8
 static void op_scalewin(Program* program)
 {
     opcode_t opcode[5];
@@ -1083,10 +965,6 @@ static void op_scalewin(Program* program)
     for (int arg = 0; arg < 5; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     const char* windowName = interpretGetString(program, opcode[4], data[4]);
@@ -1100,15 +978,11 @@ static void op_scalewin(Program* program)
     }
 }
 
-// 0x46337C
+// 0x45829C
 static void op_deletewin(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     const char* windowName = interpretGetString(program, opcode, data);
 
@@ -1119,7 +993,7 @@ static void op_deletewin(Program* program)
     program->windowId = popWindow();
 }
 
-// 0x4633E4
+// 0x4582E8
 static void op_saystart(Program* program)
 {
     sayStartingPosition = 0;
@@ -1133,15 +1007,11 @@ static void op_saystart(Program* program)
     }
 }
 
-// 0x463430
+// 0x458334
 static void op_saystartpos(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     sayStartingPosition = data;
 
@@ -1154,15 +1024,11 @@ static void op_saystartpos(Program* program)
     }
 }
 
-// 0x46349C
+// 0x45838C
 static void op_sayreplytitle(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     char* string = NULL;
     if ((opcode & VALUE_TYPE_MASK) == VALUE_TYPE_STRING) {
@@ -1174,15 +1040,11 @@ static void op_sayreplytitle(Program* program)
     }
 }
 
-// 0x463510
+// 0x4583E0
 static void op_saygotoreply(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     char* string = NULL;
     if ((opcode & VALUE_TYPE_MASK) == VALUE_TYPE_STRING) {
@@ -1194,8 +1056,8 @@ static void op_saygotoreply(Program* program)
     }
 }
 
-// 0x463584
-static void op_sayreply(Program* program)
+// 0x458438
+static void op_sayoption(Program* program)
 {
     program->flags |= PROGRAM_FLAG_0x20;
 
@@ -1206,10 +1068,6 @@ static void op_sayreply(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     const char* v1;
@@ -1237,8 +1095,8 @@ static void op_sayreply(Program* program)
     program->flags &= ~PROGRAM_FLAG_0x20;
 }
 
-// 0x4636A0
-static void op_sayoption(Program* program)
+// 0x458524
+static void op_sayreply(Program* program)
 {
     program->flags |= PROGRAM_FLAG_0x20;
 
@@ -1249,10 +1107,6 @@ static void op_sayoption(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     const char* v1;
@@ -1277,14 +1131,14 @@ static void op_sayoption(Program* program)
     program->flags &= ~PROGRAM_FLAG_0x20;
 }
 
-// 0x46378C
+// 0x4585DC
 static int checkDialog(Program* program)
 {
     program->flags |= PROGRAM_FLAG_0x40;
     return dialogGetDialogDepth() != -1;
 }
 
-// 0x4637A4
+// 0x4585F4
 static void op_sayend(Program* program)
 {
     program->flags |= PROGRAM_FLAG_0x20;
@@ -1297,7 +1151,7 @@ static void op_sayend(Program* program)
     }
 }
 
-// 0x4637EC
+// 0x45863C
 static void op_saygetlastpos(Program* program)
 {
     int value = dialogGetExitPoint();
@@ -1305,7 +1159,7 @@ static void op_saygetlastpos(Program* program)
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x463810
+// 0x458660
 static void op_sayquit(Program* program)
 {
     if (dialogQuit() != 0) {
@@ -1313,31 +1167,23 @@ static void op_sayquit(Program* program)
     }
 }
 
-// NOTE: Unused.
-//
-// 0x463828
+// 0x458678
 int getTimeOut()
 {
     return TimeOut;
 }
 
-// NOTE: Unused.
-//
-// 0x463830
+// 0x458680
 void setTimeOut(int value)
 {
     TimeOut = value;
 }
 
-// 0x463838
+// 0x458688
 static void op_saymessagetimeout(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     // TODO: What the hell is this?
     if ((opcode & VALUE_TYPE_MASK) == 0x4000) {
@@ -1347,7 +1193,7 @@ static void op_saymessagetimeout(Program* program)
     TimeOut = data;
 }
 
-// 0x463890
+// 0x4586C4
 static void op_saymessage(Program* program)
 {
     program->flags |= PROGRAM_FLAG_0x20;
@@ -1359,10 +1205,6 @@ static void op_saymessage(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     const char* v1;
@@ -1387,7 +1229,7 @@ static void op_saymessage(Program* program)
     program->flags &= ~PROGRAM_FLAG_0x20;
 }
 
-// 0x463980
+// 0x458780
 static void op_gotoxy(Program* program)
 {
     opcode_t opcode[2];
@@ -1397,10 +1239,6 @@ static void op_gotoxy(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[0] & VALUE_TYPE_MASK) != VALUE_TYPE_INT
@@ -1415,7 +1253,7 @@ static void op_gotoxy(Program* program)
     windowGotoXY(x, y);
 }
 
-// 0x463A38
+// 0x4587FC
 static void op_addbuttonflag(Program* program)
 {
     opcode_t opcode[2];
@@ -1425,10 +1263,6 @@ static void op_addbuttonflag(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[0] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
@@ -1447,7 +1281,7 @@ static void op_addbuttonflag(Program* program)
     }
 }
 
-// 0x463B10
+// 0x45889C
 static void op_addregionflag(Program* program)
 {
     opcode_t opcode[2];
@@ -1457,10 +1291,6 @@ static void op_addregionflag(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[0] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
@@ -1479,7 +1309,7 @@ static void op_addregionflag(Program* program)
     }
 }
 
-// 0x463BE8
+// 0x45893C
 static void op_addbutton(Program* program)
 {
     opcode_t opcode[5];
@@ -1488,20 +1318,12 @@ static void op_addbutton(Program* program)
     opcode[0] = interpretPopShort(program);
     data[0] = interpretPopLong(program);
 
-    if (opcode[0] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode[0], data[0]);
-    }
-
     if ((opcode[0] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid height given to addbutton");
     }
 
     opcode[1] = interpretPopShort(program);
     data[1] = interpretPopLong(program);
-
-    if (opcode[1] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode[1], data[1]);
-    }
 
     if ((opcode[1] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid width given to addbutton");
@@ -1510,10 +1332,6 @@ static void op_addbutton(Program* program)
     opcode[2] = interpretPopShort(program);
     data[2] = interpretPopLong(program);
 
-    if (opcode[2] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode[2], data[2]);
-    }
-
     if ((opcode[2] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid y given to addbutton");
     }
@@ -1521,20 +1339,12 @@ static void op_addbutton(Program* program)
     opcode[3] = interpretPopShort(program);
     data[3] = interpretPopLong(program);
 
-    if (opcode[3] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode[3], data[3]);
-    }
-
     if ((opcode[3] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid x given to addbutton");
     }
 
     opcode[4] = interpretPopShort(program);
     data[4] = interpretPopLong(program);
-
-    if (opcode[4] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode[4], data[4]);
-    }
 
     if ((opcode[4] & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
         interpretError("Invalid name given to addbutton");
@@ -1551,7 +1361,7 @@ static void op_addbutton(Program* program)
     windowAddButton(buttonName, x, y, width, height, 0);
 }
 
-// 0x463DF4
+// 0x458ACC
 static void op_addbuttontext(Program* program)
 {
     opcode_t opcode[2];
@@ -1561,10 +1371,6 @@ static void op_addbuttontext(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[0] & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
@@ -1584,7 +1390,7 @@ static void op_addbuttontext(Program* program)
     }
 }
 
-// 0x463EEC
+// 0x458B90
 static void op_addbuttongfx(Program* program)
 {
     opcode_t opcode[4];
@@ -1594,10 +1400,6 @@ static void op_addbuttongfx(Program* program)
     for (int arg = 0; arg < 4; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if (((opcode[2] & VALUE_TYPE_MASK) == VALUE_TYPE_STRING || ((opcode[2] & VALUE_TYPE_MASK) == VALUE_TYPE_INT && data[2] == 0))
@@ -1624,7 +1426,7 @@ static void op_addbuttongfx(Program* program)
     }
 }
 
-// 0x4640DC
+// 0x458D28
 static void op_addbuttonproc(Program* program)
 {
     opcode_t opcode[5];
@@ -1634,10 +1436,6 @@ static void op_addbuttonproc(Program* program)
     for (int arg = 0; arg < 5; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[0] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
@@ -1668,7 +1466,7 @@ static void op_addbuttonproc(Program* program)
     }
 }
 
-// 0x4642A8
+// 0x458E74
 static void op_addbuttonrightproc(Program* program)
 {
     opcode_t opcode[3];
@@ -1678,10 +1476,6 @@ static void op_addbuttonrightproc(Program* program)
     for (int arg = 0; arg < 3; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[0] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
@@ -1704,22 +1498,18 @@ static void op_addbuttonrightproc(Program* program)
     }
 }
 
-// 0x4643D4
+// 0x458F4C
 static void op_showwin(Program* program)
 {
     selectWindowID(program->windowId);
     windowDraw();
 }
 
-// 0x4643E4
+// 0x458F5C
 static void op_deletebutton(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
         if ((opcode & VALUE_TYPE_MASK) == VALUE_TYPE_INT && data != -1) {
@@ -1743,7 +1533,7 @@ static void op_deletebutton(Program* program)
     interpretError("Error deleting button");
 }
 
-// 0x46449C
+// 0x458FF8
 static void op_fillwin(Program* program)
 {
     opcode_t opcode[3];
@@ -1754,10 +1544,6 @@ static void op_fillwin(Program* program)
     for (int arg = 0; arg < 3; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[2] & VALUE_TYPE_MASK) != VALUE_TYPE_FLOAT) {
@@ -1795,7 +1581,7 @@ static void op_fillwin(Program* program)
     windowFill(floats[2], floats[1], floats[0]);
 }
 
-// 0x4645FC
+// 0x459108
 static void op_fillrect(Program* program)
 {
     opcode_t opcode[7];
@@ -1806,10 +1592,6 @@ static void op_fillrect(Program* program)
     for (int arg = 0; arg < 7; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[2] & VALUE_TYPE_MASK) != VALUE_TYPE_FLOAT) {
@@ -1862,19 +1644,19 @@ static void op_fillrect(Program* program)
     windowFillRect(data[6], data[5], data[4], data[3], floats[2], floats[1], floats[0]);
 }
 
-// 0x46489C
+// 0x459300
 static void op_hidemouse(Program* program)
 {
     mouse_hide();
 }
 
-// 0x4648A4
+// 0x459308
 static void op_showmouse(Program* program)
 {
     mouse_show();
 }
 
-// 0x4648AC
+// 0x459310
 static void op_mouseshape(Program* program)
 {
     opcode_t opcode[3];
@@ -1884,10 +1666,6 @@ static void op_mouseshape(Program* program)
     for (int arg = 0; arg < 3; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[0] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
@@ -1908,13 +1686,13 @@ static void op_mouseshape(Program* program)
     }
 }
 
-// 0x4649C4
+// 0x4593D8
 static void op_setglobalmousefunc(Program* Program)
 {
     interpretError("setglobalmousefunc not defined");
 }
 
-// 0x4649D4
+// 0x4593E8
 static void op_displaygfx(Program* program)
 {
     opcode_t opcode[5];
@@ -1924,10 +1702,6 @@ static void op_displaygfx(Program* program)
     for (int arg = 0; arg < 5; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     char* fileName = interpretGetString(program, opcode[4], data[4]);
@@ -1935,15 +1709,11 @@ static void op_displaygfx(Program* program)
     windowDisplay(mangledFileName, data[3], data[2], data[1], data[0]);
 }
 
-// 0x464ADC
+// 0x459464
 static void op_loadpalettetable(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
         if ((opcode & VALUE_TYPE_MASK) == VALUE_TYPE_INT && data != -1) {
@@ -1957,7 +1727,7 @@ static void op_loadpalettetable(Program* program)
     }
 }
 
-// 0x464B54
+// 0x4594C0
 static void op_addNamedEvent(Program* program)
 {
     opcode_t opcode[2];
@@ -1967,10 +1737,6 @@ static void op_addNamedEvent(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[1] & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
@@ -1981,7 +1747,7 @@ static void op_addNamedEvent(Program* program)
     nevs_addevent(v1, program, data[0], NEVS_TYPE_EVENT);
 }
 
-// 0x464BE8
+// 0x459524
 static void op_addNamedHandler(Program* program)
 {
     opcode_t opcode[2];
@@ -1991,10 +1757,6 @@ static void op_addNamedHandler(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[1] & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
@@ -2005,15 +1767,11 @@ static void op_addNamedHandler(Program* program)
     nevs_addevent(v1, program, data[0], NEVS_TYPE_HANDLER);
 }
 
-// 0x464C80
+// 0x45958C
 static void op_clearNamed(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
         interpretError("Invalid type given to clearnamed");
@@ -2023,15 +1781,11 @@ static void op_clearNamed(Program* program)
     nevs_clearevent(string);
 }
 
-// 0x464CE4
+// 0x4595D8
 static void op_signalNamed(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
         interpretError("Invalid type given to signalnamed");
@@ -2041,7 +1795,7 @@ static void op_signalNamed(Program* program)
     nevs_signal(str);
 }
 
-// 0x464D48
+// 0x459624
 static void op_addkey(Program* program)
 {
     opcode_t opcode[2];
@@ -2051,10 +1805,6 @@ static void op_addkey(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     for (int arg = 0; arg < 2; arg++) {
@@ -2079,15 +1829,11 @@ static void op_addkey(Program* program)
     }
 }
 
-// 0x464E24
+// 0x4596C4
 static void op_deletekey(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid arg 1 given to deletekey");
@@ -2108,15 +1854,11 @@ static void op_deletekey(Program* program)
     }
 }
 
-// 0x464EB0
+// 0x459738
 static void op_refreshmouse(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid arg 1 given to refreshmouse");
@@ -2127,15 +1869,11 @@ static void op_refreshmouse(Program* program)
     }
 }
 
-// 0x464F18
+// 0x459784
 static void op_setfont(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid arg 1 given to setfont");
@@ -2146,15 +1884,11 @@ static void op_setfont(Program* program)
     }
 }
 
-// 0x464F84
+// 0x4597D0
 static void op_settextflags(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid arg 1 given to setflags");
@@ -2165,7 +1899,7 @@ static void op_settextflags(Program* program)
     }
 }
 
-// 0x464FF0
+// 0x45981C
 static void op_settextcolor(Program* program)
 {
     opcode_t opcode[3];
@@ -2176,10 +1910,6 @@ static void op_settextcolor(Program* program)
     for (int arg = 0; arg < 3; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     for (int arg = 0; arg < 3; arg++) {
@@ -2199,7 +1929,7 @@ static void op_settextcolor(Program* program)
     }
 }
 
-// 0x465140
+// 0x459920
 static void op_sayoptioncolor(Program* program)
 {
     opcode_t opcode[3];
@@ -2210,10 +1940,6 @@ static void op_sayoptioncolor(Program* program)
     for (int arg = 0; arg < 3; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     for (int arg = 0; arg < 3; arg++) {
@@ -2233,7 +1959,7 @@ static void op_sayoptioncolor(Program* program)
     }
 }
 
-// 0x465290
+// 0x459A24
 static void op_sayreplycolor(Program* program)
 {
     opcode_t opcode[3];
@@ -2244,11 +1970,6 @@ static void op_sayreplycolor(Program* program)
     for (int arg = 0; arg < 3; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-        ;
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     for (int arg = 0; arg < 3; arg++) {
@@ -2268,7 +1989,7 @@ static void op_sayreplycolor(Program* program)
     }
 }
 
-// 0x4653E0
+// 0x459B28
 static void op_sethighlightcolor(Program* program)
 {
     opcode_t opcode[3];
@@ -2279,10 +2000,6 @@ static void op_sethighlightcolor(Program* program)
     for (int arg = 0; arg < 3; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     for (int arg = 0; arg < 3; arg++) {
@@ -2302,7 +2019,7 @@ static void op_sethighlightcolor(Program* program)
     }
 }
 
-// 0x465530
+// 0x459C2C
 static void op_sayreplywindow(Program* program)
 {
     opcode_t opcode[5];
@@ -2312,10 +2029,6 @@ static void op_sayreplywindow(Program* program)
     for (int arg = 0; arg < 5; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     char* v1;
@@ -2334,15 +2047,11 @@ static void op_sayreplywindow(Program* program)
     }
 }
 
-// 0x465688
+// 0x459D08
 static void op_sayreplyflags(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid arg 1 given to sayreplyflags");
@@ -2353,15 +2062,11 @@ static void op_sayreplyflags(Program* program)
     }
 }
 
-// 0x4656F4
+// 0x459D54
 static void op_sayoptionflags(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid arg 1 given to sayoptionflags");
@@ -2372,7 +2077,7 @@ static void op_sayoptionflags(Program* program)
     }
 }
 
-// 0x465760
+// 0x459DA0
 static void op_sayoptionwindow(Program* program)
 {
     opcode_t opcode[5];
@@ -2382,10 +2087,6 @@ static void op_sayoptionwindow(Program* program)
     for (int arg = 0; arg < 5; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     char* v1;
@@ -2404,7 +2105,7 @@ static void op_sayoptionwindow(Program* program)
     }
 }
 
-// 0x4658B8
+// 0x459E7C
 static void op_sayborder(Program* program)
 {
     opcode_t opcode[2];
@@ -2414,10 +2115,6 @@ static void op_sayborder(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     for (int arg = 0; arg < 2; arg++) {
@@ -2431,7 +2128,7 @@ static void op_sayborder(Program* program)
     }
 }
 
-// 0x465978
+// 0x459F00
 static void op_sayscrollup(Program* program)
 {
     opcode_t opcode[6];
@@ -2441,10 +2138,6 @@ static void op_sayscrollup(Program* program)
     for (int arg = 0; arg < 6; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     char* v1 = NULL;
@@ -2508,7 +2201,7 @@ static void op_sayscrollup(Program* program)
     }
 }
 
-// 0x465CAC
+// 0x45A1A0
 static void op_sayscrolldown(Program* program)
 {
     opcode_t opcode[6];
@@ -2518,10 +2211,6 @@ static void op_sayscrolldown(Program* program)
     for (int arg = 0; arg < 6; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     char* v1 = NULL;
@@ -2587,15 +2276,11 @@ static void op_sayscrolldown(Program* program)
     }
 }
 
-// 0x465FE0
+// 0x45A440
 static void op_saysetspacing(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid arg 1 given to saysetspacing");
@@ -2606,7 +2291,7 @@ static void op_saysetspacing(Program* program)
     }
 }
 
-// 0x46604C
+// 0x45A48C
 static void op_sayrestart(Program* program)
 {
     if (dialogRestart() != 0) {
@@ -2614,7 +2299,7 @@ static void op_sayrestart(Program* program)
     }
 }
 
-// 0x466064
+// 0x45A4A4
 static void soundCallbackInterpret(void* userData, int a2)
 {
     if (a2 == 1) {
@@ -2623,7 +2308,7 @@ static void soundCallbackInterpret(void* userData, int a2)
     }
 }
 
-// 0x466070
+// 0x45A4B0
 static int soundDeleteInterpret(int value)
 {
     if (value == -1) {
@@ -2653,7 +2338,7 @@ static int soundDeleteInterpret(int value)
 
 // NOTE: Inlined.
 //
-// 0x4660E8
+// 0x45A528
 void soundCloseInterpret()
 {
     int index;
@@ -2665,7 +2350,7 @@ void soundCloseInterpret()
     }
 }
 
-// 0x466110
+// 0x45A550
 int soundStartInterpret(char* fileName, int mode)
 {
     int v3 = 1;
@@ -2787,7 +2472,7 @@ err:
     return -1;
 }
 
-// 0x46655C
+// 0x45A99C
 static int soundPauseInterpret(int value)
 {
     if (value == -1) {
@@ -2813,7 +2498,7 @@ static int soundPauseInterpret(int value)
     return rc == SOUND_NO_ERROR;
 }
 
-// 0x4665C8
+// 0x45AA08
 static int soundRewindInterpret(int value)
 {
     if (value == -1) {
@@ -2839,7 +2524,7 @@ static int soundRewindInterpret(int value)
     return soundPlay(sound) == SOUND_NO_ERROR;
 }
 
-// 0x46662C
+// 0x45AA6C
 static int soundUnpauseInterpret(int value)
 {
     if (value == -1) {
@@ -2865,7 +2550,7 @@ static int soundUnpauseInterpret(int value)
     return rc == SOUND_NO_ERROR;
 }
 
-// 0x466698
+// 0x45AAD8
 static void op_soundplay(Program* program)
 {
     opcode_t opcode[2];
@@ -2875,10 +2560,6 @@ static void op_soundplay(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     if ((opcode[0] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
@@ -2897,15 +2578,11 @@ static void op_soundplay(Program* program)
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x466768
+// 0x45AB6C
 static void op_soundpause(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (data == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid arg 1 given to soundpause");
@@ -2914,15 +2591,11 @@ static void op_soundpause(Program* program)
     soundPauseInterpret(data);
 }
 
-// 0x4667C0
+// 0x45ABA8
 static void op_soundresume(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (data == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid arg 1 given to soundresume");
@@ -2931,15 +2604,11 @@ static void op_soundresume(Program* program)
     soundUnpauseInterpret(data);
 }
 
-// 0x466818
+// 0x45ABE4
 static void op_soundstop(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (data == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid arg 1 given to soundstop");
@@ -2948,15 +2617,11 @@ static void op_soundstop(Program* program)
     soundPauseInterpret(data);
 }
 
-// 0x466870
+// 0x45AC20
 static void op_soundrewind(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (data == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid arg 1 given to soundrewind");
@@ -2965,15 +2630,11 @@ static void op_soundrewind(Program* program)
     soundRewindInterpret(data);
 }
 
-// 0x4668C8
+// 0x45AC5C
 static void op_sounddelete(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (data == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid arg 1 given to sounddelete");
@@ -2982,15 +2643,11 @@ static void op_sounddelete(Program* program)
     soundDeleteInterpret(data);
 }
 
-// 0x466920
+// 0x45AC98
 static void op_setoneoptpause(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("SetOneOptPause: invalid arg passed (non-integer).");
@@ -3009,14 +2666,14 @@ static void op_setoneoptpause(Program* program)
     dialogToggleMediaFlag(8);
 }
 
-// 0x466994
+// 0x45ACF0
 void updateIntLib()
 {
     nevs_update();
     updateIntExtra();
 }
 
-// 0x4669A0
+// 0x45ACFC
 void intlibClose()
 {
     dialogClose();
@@ -3034,7 +2691,7 @@ void intlibClose()
     }
 }
 
-// 0x466A04
+// 0x45AD60
 static bool intLibDoInput(int key)
 {
     if (key < 0 || key >= INT_LIB_KEY_HANDLERS_CAPACITY) {
@@ -3060,7 +2717,7 @@ static bool intLibDoInput(int key)
     return true;
 }
 
-// 0x466A70
+// 0x45ADCC
 void initIntlib()
 {
     windowAddInputFunc(intLibDoInput);
@@ -3108,8 +2765,8 @@ void initIntlib()
     interpretAddFunc(0x804F, op_saystartpos);
     interpretAddFunc(0x8050, op_sayreplytitle);
     interpretAddFunc(0x8051, op_saygotoreply);
-    interpretAddFunc(0x8053, op_sayreply);
-    interpretAddFunc(0x8052, op_sayoption);
+    interpretAddFunc(0x8053, op_sayoption);
+    interpretAddFunc(0x8052, op_sayreply);
     interpretAddFunc(0x804D, op_sayend);
     interpretAddFunc(0x804C, op_sayquit);
     interpretAddFunc(0x8054, op_saymessage);
@@ -3154,7 +2811,7 @@ void initIntlib()
     initDialog();
 }
 
-// 0x466F6C
+// 0x45B2C8
 void interpretRegisterProgramDeleteCallback(IntLibProgramDeleteCallback* callback)
 {
     int index;
@@ -3176,7 +2833,7 @@ void interpretRegisterProgramDeleteCallback(IntLibProgramDeleteCallback* callbac
     callbacks[index] = callback;
 }
 
-// 0x467040
+// 0x45B39C
 void removeProgramReferences(Program* program)
 {
     for (int index = 0; index < INT_LIB_KEY_HANDLERS_CAPACITY; index++) {
