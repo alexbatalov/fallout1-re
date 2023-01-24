@@ -20,6 +20,7 @@
 #include "game/object.h"
 #include "game/perk.h"
 #include "game/proto.h"
+#include "game/reaction.h"
 #include "game/roll.h"
 #include "game/scripts.h"
 #include "game/skill.h"
@@ -180,6 +181,16 @@ static void talk_to_translucent_trans_buf_to_buf(unsigned char* src, int srcWidt
 static void talk_to_display_frame(Art* headFrm, int frame);
 static void talk_to_blend_table_init();
 static void talk_to_blend_table_exit();
+static int about_init();
+static void about_exit();
+static void about_loop();
+static int about_process_input(int input);
+static void about_update_display(unsigned char should_redraw);
+static void about_clear_display(unsigned char should_redraw);
+static void about_reset_string();
+static void about_process_string();
+static int about_lookup_word(const char* search);
+static int about_lookup_name(const char* search);
 
 // 0x504FDC
 static int fidgetFID = 0;
@@ -1304,7 +1315,7 @@ static int gDialogProcess()
             }
 
             if (dialogue_switch_mode == 6) {
-                // about_loop();
+                about_loop();
             } else if (keyCode == KEY_LOWERCASE_B) {
                 talk_to_pressed_barter(-1, -1);
             } else if (keyCode == KEY_LOWERCASE_A) {
@@ -2015,7 +2026,7 @@ static void head_bk()
         talk_to_create_barter_win();
         break;
     case 5:
-        loop_cnt = 1;
+        loop_cnt = -1;
         dialogue_switch_mode = 6;
         break;
     case 1:
@@ -2888,7 +2899,44 @@ static void talk_to_pressed_barter(int btn, int keyCode)
 // 0x440FB4
 static void talk_to_pressed_about(int btn, int keyCode)
 {
-    // TODO
+    MessageListItem mesg;
+    int reaction;
+    int reaction_level;
+
+    if (PID_TYPE(dialog_target->pid) == OBJ_TYPE_CRITTER) {
+        reaction = reaction_get(dialog_target);
+        reaction_level = reaction_to_level(reaction);
+        if (reaction_level != 0) {
+            if (map_data.field_34 != 35) {
+                if (gdialog_speech_playing == 1) {
+                    if (soundPlay(lip_info.sound)) {
+                        gdialog_free_speech();
+                    }
+                }
+
+                dialogue_switch_mode = 5;
+                gdialog_hide();
+            } else {
+                mesg.num = 904;
+                if (message_search(&proto_main_msg_file, &mesg) != 1) {
+                    debug_printf("\nError: gdialog: Can't find message!");
+                }
+                gdialog_display_msg(mesg.text);
+            }
+        } else {
+            mesg.num = 904;
+            if (message_search(&proto_main_msg_file, &mesg) != 1) {
+                debug_printf("\nError: gdialog: Can't find message!");
+            }
+            // NOTE: Message is not used.
+        }
+    } else {
+        mesg.num = 904;
+        if (message_search(&proto_main_msg_file, &mesg) != 1) {
+            debug_printf("\nError: gdialog: Can't find message!");
+        }
+        // NOTE: Message is not used.
+    }
 }
 
 // NOTE: Uncollapsed 0x445CA0 with different signature.
@@ -2908,6 +2956,8 @@ static int talk_to_create_dialogue_win()
     if (dial_win_created) {
         return -1;
     }
+
+    dial_win_created = true;
 
     CacheEntry* backgroundFrmHandle;
     int backgroundFid = art_id(OBJ_TYPE_INTERFACE, 99, 0, 0, 0);
@@ -3530,4 +3580,525 @@ static void talk_to_blend_table_exit()
 
     art_ptr_unlock(upper_hi_key);
     art_ptr_unlock(lower_hi_key);
+}
+
+// 0x442154
+static int about_init()
+{
+    int fid;
+    CacheEntry* background_key;
+    Art* background_frm;
+    unsigned char* background_data;
+    int background_width;
+    int background_height;
+    MessageList msg_file;
+    MessageListItem mesg;
+    int width;
+    Art* button_up_frm;
+    unsigned char* button_up_data;
+    Art* button_down_frm;
+    unsigned char* button_down_data;
+    int button_width;
+    int button_height;
+    int btn;
+
+    if (about_win == -1) {
+        about_old_font = text_curr();
+
+        fid = art_id(OBJ_TYPE_INTERFACE, 238, 0, 0, 0);
+        background_frm = art_ptr_lock(fid, &background_key);
+        if (background_frm != NULL) {
+            background_data = art_frame_data(background_frm, 0, 0);
+            if (background_data != NULL) {
+                background_width = art_frame_width(background_frm, 0, 0);
+                background_height = art_frame_length(background_frm, 0, 0);
+                about_win_width = background_width;
+                about_win = win_add((640 - background_width) / 2,
+                    356,
+                    background_width,
+                    background_height,
+                    colorTable[0],
+                    WINDOW_FLAG_0x10 | WINDOW_FLAG_0x04);
+                if (about_win != -1) {
+                    about_win_buf = win_get_buf(about_win);
+                    if (about_win_buf != NULL) {
+                        buf_to_buf(background_data,
+                            background_width,
+                            background_height,
+                            background_width,
+                            about_win_buf,
+                            background_width);
+
+                        text_font(103);
+
+                        if (message_init(&msg_file) == 1 && message_load(&msg_file, "game\\misc.msg") == 1) {
+                            mesg.num = 6000;
+                            if (message_search(&msg_file, &mesg) == 1) {
+                                width = text_width(mesg.text);
+                                text_to_buf(about_win_buf + background_width * 7 + (background_width - width) / 2,
+                                    mesg.text,
+                                    background_width - (background_width - width) / 2,
+                                    background_width,
+                                    colorTable[18979]);
+                                message_exit(&msg_file);
+
+                                text_font(103);
+
+                                if (message_init(&msg_file) == 1 && message_load(&msg_file, "game\\dbox.msg") == 1) {
+                                    mesg.num = 100;
+                                    if (message_search(&msg_file, &mesg) == 1) {
+                                        text_to_buf(about_win_buf + background_width * 57 + 56,
+                                            mesg.text,
+                                            background_width - 56,
+                                            background_width,
+                                            colorTable[18979]);
+
+                                        mesg.num = 103;
+                                        if (message_search(&msg_file, &mesg) == 1) {
+                                            text_to_buf(about_win_buf + background_width * 57 + 181,
+                                                mesg.text,
+                                                background_width - 181,
+                                                background_width,
+                                                colorTable[18979]);
+                                            message_exit(&msg_file);
+
+                                            fid = art_id(OBJ_TYPE_INTERFACE, 8, 0, 0, 0);
+                                            button_up_frm = art_ptr_lock(fid, &about_button_up_key);
+                                            if (button_up_frm != NULL) {
+                                                button_up_data = art_frame_data(button_up_frm, 0, 0);
+                                                if (button_up_data != NULL) {
+                                                    fid = art_id(OBJ_TYPE_INTERFACE, 9, 0, 0, 0);
+                                                    button_down_frm = art_ptr_lock(fid, &about_button_down_key);
+                                                    if (button_down_frm != NULL) {
+                                                        button_down_data = art_frame_data(button_down_frm, 0, 0);
+                                                        if (button_down_data != NULL) {
+                                                            button_width = art_frame_width(button_down_frm, 0, 0);
+                                                            button_height = art_frame_length(button_down_frm, 0, 0);
+
+                                                            btn = win_register_button(about_win,
+                                                                34,
+                                                                58,
+                                                                button_width,
+                                                                button_height,
+                                                                -1,
+                                                                -1,
+                                                                -1,
+                                                                KEY_RETURN,
+                                                                button_up_data,
+                                                                button_down_data,
+                                                                NULL,
+                                                                BUTTON_FLAG_TRANSPARENT);
+                                                            if (btn != -1) {
+                                                                win_register_button_sound_func(btn, gsound_red_butt_press, gsound_red_butt_release);
+
+                                                                btn = win_register_button(about_win,
+                                                                    160,
+                                                                    58,
+                                                                    button_width,
+                                                                    button_height,
+                                                                    -1,
+                                                                    -1,
+                                                                    -1,
+                                                                    KEY_ESCAPE,
+                                                                    button_up_data,
+                                                                    button_down_data,
+                                                                    NULL,
+                                                                    BUTTON_FLAG_TRANSPARENT);
+                                                                if (btn != -1) {
+                                                                    win_register_button_sound_func(btn, gsound_red_butt_press, gsound_red_butt_release);
+
+                                                                    about_input_string = (char*)mem_malloc(128);
+                                                                    if (about_input_string != NULL) {
+                                                                        strcpy(about_restore_string, dialogBlock.replyText);
+                                                                        about_reset_string();
+                                                                        about_last_time = get_time();
+                                                                        about_update_display(0);
+
+                                                                        art_ptr_unlock(background_key);
+
+                                                                        win_draw(about_win);
+                                                                        return 0;
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                        art_ptr_unlock(about_button_down_key);
+                                                    }
+                                                }
+                                                art_ptr_unlock(about_button_up_key);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            message_exit(&msg_file);
+                        }
+                    }
+                    win_delete(about_win);
+                    about_win = -1;
+                }
+            }
+
+            art_ptr_unlock(background_key);
+        }
+    }
+
+    text_font(about_old_font);
+    GNWSystemError("Unable to create dialog box.");
+    return -1;
+}
+
+// 0x442578
+static void about_exit()
+{
+    if (about_win != -1) {
+        if (about_input_string != NULL) {
+            mem_free(about_input_string);
+            about_input_string = NULL;
+        }
+
+        if (about_button_up_key != NULL) {
+            art_ptr_unlock(about_button_up_key);
+            about_button_up_key = NULL;
+        }
+
+        if (about_button_down_key != NULL) {
+            art_ptr_unlock(about_button_down_key);
+            about_button_down_key = NULL;
+        }
+
+        win_delete(about_win);
+        about_win = -1;
+
+        text_font(about_old_font);
+    }
+}
+
+// 0x4425F8
+static void about_loop()
+{
+    if (about_init() != 0) {
+        return;
+    }
+
+    while (1) {
+        if (about_process_input(get_input()) == -1) {
+            break;
+        }
+    }
+
+    about_exit();
+    strcpy(dialogBlock.replyText, about_restore_string);
+    dialogue_switch_mode = 0;
+    talk_to_create_dialogue_win();
+    gdialog_unhide();
+    gDialogProcessReply();
+}
+
+// 0x44267C
+static int about_process_input(int input)
+{
+    if (about_win == -1) {
+        return -1;
+    }
+
+    switch (input) {
+    case KEY_BACKSPACE:
+        if (about_input_index > 0) {
+            about_input_index--;
+            about_input_string[about_input_index] = about_input_cursor;
+            about_input_string[about_input_index + 1] = '\0';
+            about_update_display(1);
+        }
+        break;
+    case KEY_RETURN:
+        about_process_string();
+        break;
+    case KEY_ESCAPE:
+        if (gdialog_speech_playing == 1) {
+            if (soundPlaying(lip_info.sound)) {
+                gdialog_free_speech();
+            }
+        }
+        return -1;
+    default:
+        if (input >= 0 && about_input_index < 126) {
+            text_font(101);
+            about_input_string[about_input_index] = '_';
+
+            if (text_width(about_input_string) + text_char_width(input) < 244) {
+                about_input_string[about_input_index] = input;
+                about_input_string[about_input_index + 1] = about_input_cursor;
+                about_input_string[about_input_index + 2] = '\0';
+                about_input_index++;
+                about_update_display(1);
+            }
+
+            about_input_string[about_input_index] = about_input_cursor;
+        }
+        break;
+    }
+
+    if (elapsed_time(about_last_time) > 333) {
+        if (about_input_cursor == '_') {
+            about_input_cursor = ' ';
+        } else {
+            about_input_cursor = '_';
+        }
+        about_input_string[about_input_index] = about_input_cursor;
+        about_update_display(1);
+        about_last_time = get_time();
+    }
+
+    return 0;
+}
+
+// 0x442800
+static void about_update_display(unsigned char should_redraw)
+{
+    int old_font;
+    int width;
+    int skip = 0;
+
+    old_font = text_curr();
+    about_clear_display(0);
+    text_font(101);
+
+    width = text_width(about_input_string) - 244;
+    while (width > 0) {
+        width -= text_char_width(about_input_string[skip++]);
+    }
+
+    text_to_buf(about_win_buf + about_win_width * 32 + 22,
+        about_input_string + skip,
+        244,
+        about_win_width,
+        colorTable[992]);
+
+    if (should_redraw) {
+        win_draw_rect(about_win, &about_input_rect);
+    }
+
+    text_font(old_font);
+}
+
+// 0x4428C8
+static void about_clear_display(unsigned char should_redraw)
+{
+    win_fill(about_win, 22, 32, 244, 14, colorTable[0]);
+
+    if (should_redraw) {
+        win_draw_rect(about_win, &about_input_rect);
+    }
+}
+
+// 0x442910
+static void about_reset_string()
+{
+    about_input_index = 0;
+    about_input_string[0] = about_input_cursor;
+    about_input_string[1] = '\0';
+}
+
+// 0x44292C
+static void about_process_string()
+{
+    static const char* delimeters = " \t.,";
+    int found = 0;
+    char* tok;
+    Script* scr;
+    int count;
+    int message_id;
+    char* str;
+    int random_msg_num;
+
+    about_input_string[about_input_index] = '\0';
+
+    if (about_input_string[0] != '\0') {
+        tok = strtok(about_input_string, delimeters);
+        while (tok != NULL) {
+            if (about_lookup_word(tok) || about_lookup_name(tok)) {
+                found = 1;
+                break;
+            }
+            tok = strtok(NULL, delimeters);
+        }
+
+        if (!found) {
+            if (scr_ptr(dialog_target->sid, &scr) != -1) {
+                count = 0;
+                for (message_id = 980; message_id < 1000; message_id++) {
+                    str = scr_get_msg_str(scr->scr_script_idx + 1, message_id);
+                    if (str != NULL && stricmp(str, "error") != 0) {
+                        count++;
+                    }
+                }
+
+                if (count != 0) {
+                    random_msg_num = roll_random(1, count);
+                    for (message_id = 980; message_id < 1000; message_id++) {
+                        str = scr_get_msg_str(scr->scr_script_idx + 1, message_id);
+                        if (str != NULL && stricmp(str, "error") != 0) {
+                            random_msg_num--;
+                            if (random_msg_num == 0) {
+                                strncpy(dialogBlock.replyText, scr_get_msg_str_speech(scr->scr_script_idx + 1, message_id, 1), sizeof(dialogBlock.replyText) - 1);
+                                *(dialogBlock.replyText + sizeof(dialogBlock.replyText) - 1) = '\0';
+                                gdialog_unhide_reply();
+                                gDialogProcessReply();
+                            }
+                        }
+                    }
+                } else {
+                    for (message_id = 980; message_id < 1000; message_id++) {
+                        str = scr_get_msg_str(1, message_id);
+                        if (str != NULL && stricmp(str, "error") != 0) {
+                            count++;
+                        }
+                    }
+
+                    if (count != 0) {
+                        random_msg_num = roll_random(1, count);
+                        for (message_id = 980; message_id < 1000; message_id++) {
+                            str = scr_get_msg_str(1, message_id);
+                            if (str != NULL && stricmp(str, "error") != 0) {
+                                random_msg_num--;
+                                if (random_msg_num == 0) {
+                                    strncpy(dialogBlock.replyText, scr_get_msg_str_speech(1, message_id, 1), sizeof(dialogBlock.replyText) - 1);
+                                    *(dialogBlock.replyText + sizeof(dialogBlock.replyText) - 1) = '\0';
+                                    gdialog_unhide_reply();
+                                    gDialogProcessReply();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    about_reset_string();
+    about_update_display(1);
+}
+
+// 0x442B54
+static int about_lookup_word(const char* search)
+{
+    Script* scr;
+    int found = -1;
+    int message_list_id;
+    int message_id;
+    char* str;
+
+    if (scr_ptr(dialog_target->sid, &scr) != -1) {
+        message_list_id = scr->scr_script_idx + 1;
+        for (message_id = 1000; message_id < 1100; message_id++) {
+            str = scr_get_msg_str(message_list_id, message_id);
+            if (str != NULL && stricmp(str, search) == 0) {
+                found = message_id + 100;
+                break;
+            }
+        }
+    }
+
+    if (found == -1) {
+        message_list_id = 1;
+        for (message_id = 600 * map_data.field_34 + 1000; message_id < 600 * map_data.field_34 + 1100; message_id++) {
+            str = scr_get_msg_str(message_list_id, message_id);
+            if (str != NULL && stricmp(str, search) == 0) {
+                found = message_id + 100;
+                break;
+            }
+        }
+    }
+
+    if (found == -1) {
+        return 0;
+    }
+
+    strncpy(dialogBlock.replyText, scr_get_msg_str_speech(message_list_id, found, 1), sizeof(dialogBlock.replyText) - 1);
+    *(dialogBlock.replyText + sizeof(dialogBlock.replyText) - 1) = '\0';
+    gdialog_unhide_reply();
+    gDialogProcessReply();
+    return 1;
+}
+
+// 0x442C58
+static int about_lookup_name(const char* search)
+{
+    const char* name;
+    Script* scr;
+    int message_id;
+    char* str;
+    int count;
+    int random_msg_num;
+
+    if (PID_TYPE(dialog_target->pid) != OBJ_TYPE_CRITTER) {
+        return 0;
+    }
+
+    name = critter_name(dialog_target);
+    if (name == NULL) {
+        return 0;
+    }
+
+    // NOTE: Implementation looks broken - why it checks against it's own name?
+    // This defeats the purpose of looking up known names.
+    if (stricmp(search, name) != 0) {
+        return 0;
+    }
+
+    if (scr_ptr(dialog_target->sid, &scr) == -1) {
+        return 0;
+    }
+
+    count = 0;
+    for (message_id = 970; message_id < 980; message_id++) {
+        str = scr_get_msg_str(scr->scr_script_idx + 1, message_id);
+        if (str != NULL && stricmp(str, "error") != 0) {
+            count++;
+        }
+    }
+
+    if (count != 0) {
+        random_msg_num = roll_random(1, count);
+        for (message_id = 970; message_id < 980; message_id++) {
+            str = scr_get_msg_str(scr->scr_script_idx + 1, message_id);
+            if (str != NULL && stricmp(str, "error") != 0) {
+                random_msg_num--;
+                if (random_msg_num == 0) {
+                    strncpy(dialogBlock.replyText, scr_get_msg_str_speech(scr->scr_script_idx + 1, message_id, 1), sizeof(dialogBlock.replyText) - 1);
+                    *(dialogBlock.replyText + sizeof(dialogBlock.replyText) - 1) = '\0';
+                    gdialog_unhide_reply();
+                    gDialogProcessReply();
+                    return 1;
+                }
+            }
+        }
+    } else {
+        for (message_id = 970; message_id < 980; message_id++) {
+            str = scr_get_msg_str(1, message_id);
+            if (str != NULL && stricmp(str, "error") != 0) {
+                count++;
+            }
+        }
+
+        if (count != 0) {
+            random_msg_num = roll_random(1, count);
+            for (message_id = 970; message_id < 980; message_id++) {
+                str = scr_get_msg_str(1, message_id);
+                if (str != NULL && stricmp(str, "error") != 0) {
+                    random_msg_num--;
+                    if (random_msg_num == 0) {
+                        strncpy(dialogBlock.replyText, scr_get_msg_str_speech(1, message_id, 1), sizeof(dialogBlock.replyText) - 1);
+                        *(dialogBlock.replyText + sizeof(dialogBlock.replyText) - 1) = '\0';
+                        gdialog_unhide_reply();
+                        gDialogProcessReply();
+                        return 1;
+                    }
+                }
+            }
+        }
+    }
+
+    return 0;
 }
