@@ -125,10 +125,13 @@ int soundSetData(Sound* sound, unsigned char* buf, int size);
 int soundPlay(Sound* sound);
 int soundStop(Sound* sound);
 int soundDelete(Sound* sound);
+int numSoundsPlaying();
 int soundContinue(Sound* sound);
 bool soundPlaying(Sound* sound);
 bool soundDone(Sound* sound);
+bool soundFading(Sound* sound);
 bool soundPaused(Sound* sound);
+int soundFlags(Sound* sound, int a2);
 int soundType(Sound* sound, int a2);
 int soundLength(Sound* sound);
 int soundLoop(Sound* sound, int a2);
@@ -147,7 +150,7 @@ int soundGetPosition(Sound* sound);
 int soundSetPosition(Sound* sound, int a2);
 int soundFade(Sound* sound, int duration, int targetVolume);
 void soundFlushAllSounds();
-void soundContinueAll();
+void soundUpdate();
 int soundSetDefaultFileIO(SoundOpenProc* openProc, SoundCloseProc* closeProc, SoundReadProc* readProc, SoundWriteProc* writeProc, SoundSeekProc* seekProc, SoundTellProc* tellProc, SoundFileLengthProc* fileLengthProc);
 
 #endif /* FALLOUT_INT_SOUND_H_ */

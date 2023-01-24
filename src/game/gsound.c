@@ -1628,7 +1628,7 @@ int gsound_play_sfx_file(const char* name)
 // 0x44932C
 static void gsound_bkg_proc()
 {
-    soundContinueAll();
+    soundUpdate();
 }
 
 // 0x449334

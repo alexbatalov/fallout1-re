@@ -44,25 +44,28 @@ static void removeFadeSound(FadeSound* fadeSound);
 static void fadeSounds();
 static int internalSoundFade(Sound* sound, int duration, int targetVolume, int a4);
 
-// 0x51D478
+// 0x507E04
 static FadeSound* fadeHead = NULL;
 
-// 0x51D47C
+// 0x507E08
 static FadeSound* fadeFreeList = NULL;
 
-// 0x51D480
+// 0x507E0C
 static unsigned int fadeEventHandle = UINT_MAX;
 
-// 0x51D488
+// 0x507E10
+static int defaultChannel = 2;
+
+// 0x507E14
 static SoundMallocFunc* mallocPtr = defaultMalloc;
 
-// 0x51D48C
+// 0x507E18
 static SoundReallocFunc* reallocPtr = defaultRealloc;
 
-// 0x51D490
+// 0x507E1C
 static SoundFreeFunc* freePtr = defaultFree;
 
-// 0x51D494
+// 0x507E20
 static SoundFileIO defaultStream = {
     soundOpenData,
     soundCloseData,
@@ -74,10 +77,10 @@ static SoundFileIO defaultStream = {
     -1,
 };
 
-// 0x51D4B4
+// 0x507E40
 static SoundFileNameMangler* nameMangler = defaultMangler;
 
-// 0x51D4B8
+// 0x507E44
 static const char* errorMsgs[SOUND_ERR_COUNT] = {
     "sound.c: No error",
     "sound.c: SOS driver not loaded",
@@ -114,60 +117,60 @@ static const char* errorMsgs[SOUND_ERR_COUNT] = {
     "sound.c: unknown error",
 };
 
-// 0x668150
+// 0x6651A0
 static int soundErrorno;
 
-// 0x668154
+// 0x6651A4
 static int masterVol;
 
-// 0x668158
+// 0x6651A8
 LPDIRECTSOUNDBUFFER primaryDSBuffer;
 
-// 0x66815C
+// 0x6651AC
 static int sampleRate;
 
 // Number of sounds currently playing.
 //
-// 0x668160
+// 0x6651B0
 static int numSounds;
 
-// 0x668164
+// 0x6651B4
 static int deviceInit;
 
-// 0x668168
+// 0x6651B8
 static int dataSize;
 
-// 0x66816C
+// 0x6651BC
 static int numBuffers;
 
-// 0x668170
+// 0x6651C0
 static bool driverInit;
 
-// 0x668174
+// 0x6651C4
 static Sound* soundMgrList;
 
-// 0x668178
+// 0x6651C8
 LPDIRECTSOUND soundDSObject;
 
-// 0x4AC6F0
+// 0x499C80
 static void* defaultMalloc(size_t size)
 {
     return malloc(size);
 }
 
-// 0x4AC6F8
+// 0x499C88
 static void* defaultRealloc(void* ptr, size_t size)
 {
     return realloc(ptr, size);
 }
 
-// 0x4AC700
+// 0x499C90
 static void defaultFree(void* ptr)
 {
     free(ptr);
 }
 
-// 0x4AC708
+// 0x499C98
 void soundRegisterAlloc(SoundMallocFunc* mallocProc, SoundReallocFunc* reallocProc, SoundFreeFunc* freeProc)
 {
     mallocPtr = mallocProc;
@@ -175,7 +178,7 @@ void soundRegisterAlloc(SoundMallocFunc* mallocProc, SoundReallocFunc* reallocPr
     freePtr = freeProc;
 }
 
-// 0x4AC71C
+// 0x499CAC
 static long soundFileSize(int fileHandle)
 {
     long pos;
@@ -188,49 +191,49 @@ static long soundFileSize(int fileHandle)
     return size;
 }
 
-// 0x4AC750
+// 0x499CE0
 static long soundTellData(int fileHandle)
 {
     return tell(fileHandle);
 }
 
-// 0x4AC758
+// 0x499CE8
 static int soundWriteData(int fileHandle, const void* buf, unsigned int size)
 {
     return write(fileHandle, buf, size);
 }
 
-// 0x4AC760
+// 0x499CF0
 static int soundReadData(int fileHandle, void* buf, unsigned int size)
 {
     return read(fileHandle, buf, size);
 }
 
-// 0x4AC768
+// 0x499CF8
 static int soundOpenData(const char* filePath, int flags, ...)
 {
     return open(filePath, flags);
 }
 
-// 0x4AC774
+// 0x499D04
 static int soundSeekData(int fileHandle, long offset, int origin)
 {
     return lseek(fileHandle, offset, origin);
 }
 
-// 0x4AC77C
+// 0x499D0C
 static int soundCloseData(int fileHandle)
 {
     return close(fileHandle);
 }
 
-// 0x4AC78C
+// 0x499D1C
 static char* defaultMangler(char* fname)
 {
     return fname;
 }
 
-// 0x4AC790
+// 0x499D20
 const char* soundError(int err)
 {
     if (err == -1) {
@@ -244,7 +247,7 @@ const char* soundError(int err)
     return errorMsgs[err];
 }
 
-// 0x4AC7B0
+// 0x499D40
 static void refreshSoundBuffers(Sound* sound)
 {
     if (sound->field_3C & 0x80) {
@@ -423,7 +426,7 @@ static void refreshSoundBuffers(Sound* sound)
     return;
 }
 
-// 0x4ACC58
+// 0x49A1E4
 int soundInit(int a1, int a2, int a3, int a4, int rate)
 {
     HRESULT hr;
@@ -558,7 +561,7 @@ out:
     return 0;
 }
 
-// 0x4AD04C
+// 0x49A5D8
 void soundClose()
 {
     while (soundMgrList != NULL) {
@@ -591,7 +594,7 @@ void soundClose()
     driverInit = false;
 }
 
-// 0x4AD0FC
+// 0x49A688
 Sound* soundAllocate(int a1, int a2)
 {
     if (!driverInit) {
@@ -671,7 +674,7 @@ Sound* soundAllocate(int a1, int a2)
     return sound;
 }
 
-// 0x4AD308
+// 0x49A88C
 static int preloadBuffers(Sound* sound)
 {
     unsigned char* buf;
@@ -736,7 +739,7 @@ static int preloadBuffers(Sound* sound)
     return result;
 }
 
-// 0x4AD498
+// 0x49AA1C
 int soundLoad(Sound* sound, char* filePath)
 {
     if (!driverInit) {
@@ -758,7 +761,7 @@ int soundLoad(Sound* sound, char* filePath)
     return preloadBuffers(sound);
 }
 
-// 0x4AD504
+// 0x49AA88
 int soundRewind(Sound* sound)
 {
     HRESULT hr;
@@ -796,7 +799,7 @@ int soundRewind(Sound* sound)
     return soundErrorno;
 }
 
-// 0x4AD5C8
+// 0x49AB4C
 static int addSoundData(Sound* sound, unsigned char* buf, int size)
 {
     HRESULT hr;
@@ -832,7 +835,7 @@ static int addSoundData(Sound* sound, unsigned char* buf, int size)
     return soundErrorno;
 }
 
-// 0x4AD6C0
+// 0x49AC44
 int soundSetData(Sound* sound, unsigned char* buf, int size)
 {
     if (!driverInit) {
@@ -857,7 +860,7 @@ int soundSetData(Sound* sound, unsigned char* buf, int size)
     return addSoundData(sound, buf, size);
 }
 
-// 0x4AD73C
+// 0x49ACC0
 int soundPlay(Sound* sound)
 {
     HRESULT hr;
@@ -899,7 +902,7 @@ int soundPlay(Sound* sound)
     return soundErrorno;
 }
 
-// 0x4AD828
+// 0x49ADAC
 int soundStop(Sound* sound)
 {
     HRESULT hr;
@@ -932,7 +935,7 @@ int soundStop(Sound* sound)
     return soundErrorno;
 }
 
-// 0x4AD8DC
+// 0x49AE60
 int soundDelete(Sound* sample)
 {
     if (!driverInit) {
@@ -956,7 +959,13 @@ int soundDelete(Sound* sample)
     return soundErrorno;
 }
 
-// 0x4AD948
+// 0x49AEC4
+int numSoundsPlaying()
+{
+    return numSounds;
+}
+
+// 0x49AECC
 int soundContinue(Sound* sound)
 {
     HRESULT hr;
@@ -1025,7 +1034,7 @@ int soundContinue(Sound* sound)
     return soundErrorno;
 }
 
-// 0x4ADA84
+// 0x49B008
 bool soundPlaying(Sound* sound)
 {
     if (!driverInit) {
@@ -1041,7 +1050,7 @@ bool soundPlaying(Sound* sound)
     return (sound->field_40 & SOUND_FLAG_SOUND_IS_PLAYING) != 0;
 }
 
-// 0x4ADAC4
+// 0x49B048
 bool soundDone(Sound* sound)
 {
     if (!driverInit) {
@@ -1054,10 +1063,26 @@ bool soundDone(Sound* sound)
         return false;
     }
 
-    return sound->field_40 & 1;
+    return (sound->field_40 & SOUND_FLAG_SOUND_IS_DONE) != 0;
 }
 
-// 0x4ADB44
+// 0x49B088
+bool soundFading(Sound* sound)
+{
+    if (!driverInit) {
+        soundErrorno = SOUND_NOT_INITIALIZED;
+        return false;
+    }
+
+    if (sound == NULL || sound->directSoundBuffer == 0) {
+        soundErrorno = SOUND_NO_SOUND;
+        return false;
+    }
+
+    return (sound->field_40 & SOUND_FLAG_SOUND_IS_FADING) != 0;
+}
+
+// 0x49B0C8
 bool soundPaused(Sound* sound)
 {
     if (!driverInit) {
@@ -1073,7 +1098,23 @@ bool soundPaused(Sound* sound)
     return (sound->field_40 & SOUND_FLAG_SOUND_IS_PAUSED) != 0;
 }
 
-// 0x4ADBC4
+// 0x49B108
+int soundFlags(Sound* sound, int a2)
+{
+    if (!driverInit) {
+        soundErrorno = SOUND_NOT_INITIALIZED;
+        return 0;
+    }
+
+    if (sound == NULL || sound->directSoundBuffer == NULL) {
+        soundErrorno = SOUND_NO_SOUND;
+        return 0;
+    }
+
+    return sound->field_3C & a2;
+}
+
+// 0x49B148
 int soundType(Sound* sound, int a2)
 {
     if (!driverInit) {
@@ -1089,7 +1130,7 @@ int soundType(Sound* sound, int a2)
     return sound->field_44 & a2;
 }
 
-// 0x4ADC04
+// 0x49B188
 int soundLength(Sound* sound)
 {
     if (!driverInit) {
@@ -1113,7 +1154,7 @@ int soundLength(Sound* sound)
     return result;
 }
 
-// 0x4ADD00
+// 0x49B284
 int soundLoop(Sound* sound, int a2)
 {
     if (!driverInit) {
@@ -1140,9 +1181,7 @@ int soundLoop(Sound* sound, int a2)
     return soundErrorno;
 }
 
-// Normalize volume?
-//
-// 0x4ADD68
+// 0x49B2EC
 int soundVolumeHMItoDirectSound(int volume)
 {
     double normalizedVolume;
@@ -1161,7 +1200,7 @@ int soundVolumeHMItoDirectSound(int volume)
     return (int)normalizedVolume;
 }
 
-// 0x4ADE0C
+// 0x49B38C
 int soundVolume(Sound* sound, int volume)
 {
     int normalizedVolume;
@@ -1196,7 +1235,7 @@ int soundVolume(Sound* sound, int volume)
     return soundErrorno;
 }
 
-// 0x4ADE80
+// 0x49B400
 int soundGetVolume(Sound* sound)
 {
     long volume;
@@ -1233,7 +1272,7 @@ int soundGetVolume(Sound* sound)
     return sound->volume;
 }
 
-// 0x4ADFF0
+// 0x49B570
 int soundSetCallback(Sound* sound, SoundCallback* callback, void* userData)
 {
     if (!driverInit) {
@@ -1253,7 +1292,7 @@ int soundSetCallback(Sound* sound, SoundCallback* callback, void* userData)
     return soundErrorno;
 }
 
-// 0x4AE02C
+// 0x49B5AC
 int soundSetChannel(Sound* sound, int channels)
 {
     LPWAVEFORMATEX format;
@@ -1280,7 +1319,7 @@ int soundSetChannel(Sound* sound, int channels)
     return soundErrorno;
 }
 
-// 0x4AE0B0
+// 0x49B630
 int soundSetReadLimit(Sound* sound, int readLimit)
 {
     if (!driverInit) {
@@ -1299,9 +1338,7 @@ int soundSetReadLimit(Sound* sound, int readLimit)
     return soundErrorno;
 }
 
-// TODO: Check, looks like it uses couple of inlined functions.
-//
-// 0x4AE0E4
+// 0x49B664
 int soundPause(Sound* sound)
 {
     HRESULT hr;
@@ -1345,9 +1382,7 @@ int soundPause(Sound* sound)
     return soundStop(sound);
 }
 
-// TODO: Check, looks like it uses couple of inlined functions.
-//
-// 0x4AE1F0
+// 0x49B770
 int soundUnpause(Sound* sound)
 {
     HRESULT hr;
@@ -1384,7 +1419,7 @@ int soundUnpause(Sound* sound)
     return soundPlay(sound);
 }
 
-// 0x4AE2FC
+// 0x49B87C
 int soundSetFileIO(Sound* sound, SoundOpenProc* openProc, SoundCloseProc* closeProc, SoundReadProc* readProc, SoundWriteProc* writeProc, SoundSeekProc* seekProc, SoundTellProc* tellProc, SoundFileLengthProc* fileLengthProc)
 {
     if (!driverInit) {
@@ -1429,7 +1464,7 @@ int soundSetFileIO(Sound* sound, SoundOpenProc* openProc, SoundCloseProc* closeP
     return soundErrorno;
 }
 
-// 0x4AE378
+// 0x49B8F8
 void soundMgrDelete(Sound* sound)
 {
     FadeSound* curr;
@@ -1492,7 +1527,7 @@ void soundMgrDelete(Sound* sound)
     freePtr(sound);
 }
 
-// 0x4AE578
+// 0x49BAF8
 int soundSetMasterVolume(int volume)
 {
     if (volume < VOLUME_MIN || volume > VOLUME_MAX) {
@@ -1512,7 +1547,7 @@ int soundSetMasterVolume(int volume)
     return soundErrorno;
 }
 
-// 0x4AE5C8
+// 0x49BB48
 static void CALLBACK doTimerEvent(UINT uTimerID, UINT uMsg, DWORD_PTR dwUser, DWORD_PTR dw1, DWORD_PTR dw2)
 {
     void (*fn)();
@@ -1523,7 +1558,7 @@ static void CALLBACK doTimerEvent(UINT uTimerID, UINT uMsg, DWORD_PTR dwUser, DW
     }
 }
 
-// 0x4AE614
+// 0x49BB94
 static void removeTimedEvent(unsigned int* timerId)
 {
     if (*timerId != -1) {
@@ -1532,7 +1567,7 @@ static void removeTimedEvent(unsigned int* timerId)
     }
 }
 
-// 0x4AE634
+// 0x49BBB4
 int soundGetPosition(Sound* sound)
 {
     if (!driverInit) {
@@ -1560,7 +1595,7 @@ int soundGetPosition(Sound* sound)
     return playPos;
 }
 
-// 0x4AE6CC
+// 0x49BC48
 int soundSetPosition(Sound* sound, int a2)
 {
     if (!driverInit) {
@@ -1612,7 +1647,7 @@ int soundSetPosition(Sound* sound, int a2)
     return soundErrorno;
 }
 
-// 0x4AE830
+// 0x49BDAC
 static void removeFadeSound(FadeSound* fadeSound)
 {
     FadeSound* prev;
@@ -1651,7 +1686,7 @@ static void removeFadeSound(FadeSound* fadeSound)
     fadeSound->next = tmp;
 }
 
-// 0x4AE8B0
+// 0x49BE2C
 static void fadeSounds()
 {
     FadeSound* ptr;
@@ -1691,7 +1726,7 @@ static void fadeSounds()
     }
 }
 
-// 0x4AE988
+// 0x49BF04
 static int internalSoundFade(Sound* sound, int duration, int targetVolume, int a4)
 {
     FadeSound* ptr;
@@ -1784,13 +1819,13 @@ static int internalSoundFade(Sound* sound, int duration, int targetVolume, int a
     return soundErrorno;
 }
 
-// 0x4AEB0C
+// 0x49C088
 int soundFade(Sound* sound, int duration, int targetVolume)
 {
     return internalSoundFade(sound, duration, targetVolume, 0);
 }
 
-// 0x4AEB54
+// 0x49C0D0
 void soundFlushAllSounds()
 {
     while (soundMgrList != NULL) {
@@ -1798,8 +1833,8 @@ void soundFlushAllSounds()
     }
 }
 
-// 0x4AEBE0
-void soundContinueAll()
+// 0x49C15C
+void soundUpdate()
 {
     Sound* curr = soundMgrList;
     while (curr != NULL) {
@@ -1810,7 +1845,7 @@ void soundContinueAll()
     }
 }
 
-// 0x4AEC00
+// 0x49C17C
 int soundSetDefaultFileIO(SoundOpenProc* openProc, SoundCloseProc* closeProc, SoundReadProc* readProc, SoundWriteProc* writeProc, SoundSeekProc* seekProc, SoundTellProc* tellProc, SoundFileLengthProc* fileLengthProc)
 {
     if (openProc != NULL) {

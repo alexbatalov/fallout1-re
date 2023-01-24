@@ -58,13 +58,13 @@ void credits(const char* filePath, int backgroundFid, bool useReversedStyle)
         name_color = colorTable[18917];
     }
 
-    soundContinueAll();
+    soundUpdate();
 
     char localizedPath[MAX_PATH];
     if (message_make_path(localizedPath, filePath)) {
         credits_file = db_fopen(localizedPath, "rt");
         if (credits_file != NULL) {
-            soundContinueAll();
+            soundUpdate();
 
             cycle_disable();
             gmouse_set_cursor(MOUSE_CURSOR_NONE);
@@ -77,13 +77,13 @@ void credits(const char* filePath, int backgroundFid, bool useReversedStyle)
             int creditsWindowX = 0;
             int creditsWindowY = 0;
             int window = win_add(creditsWindowX, creditsWindowY, CREDITS_WINDOW_WIDTH, CREDITS_WINDOW_HEIGHT, colorTable[0], 20);
-            soundContinueAll();
+            soundUpdate();
             if (window != -1) {
                 unsigned char* windowBuffer = win_get_buf(window);
                 if (windowBuffer != NULL) {
                     unsigned char* backgroundBuffer = (unsigned char*)mem_malloc(CREDITS_WINDOW_WIDTH * CREDITS_WINDOW_HEIGHT);
                     if (backgroundBuffer) {
-                        soundContinueAll();
+                        soundUpdate();
 
                         memset(backgroundBuffer, colorTable[0], CREDITS_WINDOW_WIDTH * CREDITS_WINDOW_HEIGHT);
 
@@ -270,9 +270,9 @@ void credits(const char* filePath, int backgroundFid, bool useReversedStyle)
                     }
                 }
 
-                soundContinueAll();
+                soundUpdate();
                 palette_fade_to(black_palette);
-                soundContinueAll();
+                soundUpdate();
                 win_delete(window);
             }
 

@@ -752,7 +752,7 @@ void real_win_update_status_bar(float a1, float a2)
         statusBar.field_20 = (int)(a1 * statusBar.width);
         statusBar.field_24 = (int)(a2 * statusBar.width);
         drawStatusBar();
-        soundContinueAll();
+        soundUpdate();
     }
 }
 
@@ -762,7 +762,7 @@ void real_win_increment_status_bar(float a1)
     if (statusBarActive) {
         statusBar.field_1C = statusBar.field_20 + (int)(a1 * (statusBar.field_24 - statusBar.field_20));
         drawStatusBar();
-        soundContinueAll();
+        soundUpdate();
     }
 }
 

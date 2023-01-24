@@ -524,7 +524,7 @@ static void endgame_pan_desert(int direction, const char* narratorFileName)
                 }
             }
 
-            soundContinueAll();
+            soundUpdate();
 
             if (get_input() != -1) {
                 // NOTE: Uninline.
@@ -603,7 +603,7 @@ static void endgame_display_image(int fid, const char* narratorFileName)
             buf_to_buf(backgroundData, ENDGAME_ENDING_WINDOW_WIDTH, ENDGAME_ENDING_WINDOW_HEIGHT, ENDGAME_ENDING_WINDOW_WIDTH, endgame_window_buffer, ENDGAME_ENDING_WINDOW_WIDTH);
             endgame_show_subtitles();
             win_draw(endgame_window);
-            soundContinueAll();
+            soundUpdate();
         }
 
         enable_bk();

@@ -255,11 +255,11 @@ void main_menu_hide(bool animate)
         return;
     }
 
-    soundContinueAll();
+    soundUpdate();
 
     if (animate) {
         palette_fade_to(black_palette);
-        soundContinueAll();
+        soundUpdate();
     }
 
     win_hide(main_window);

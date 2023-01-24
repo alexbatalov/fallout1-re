@@ -137,7 +137,7 @@ void lips_bkg_proc()
 
     head_marker_current = v0;
 
-    soundContinueAll();
+    soundUpdate();
 }
 
 // 0x46CD9C

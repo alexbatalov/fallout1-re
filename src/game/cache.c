@@ -127,7 +127,7 @@ bool cache_lock(Cache* cache, int key, void** data, CacheEntry** cacheEntryPtr)
 
         lock_sound_ticker %= 4;
         if (lock_sound_ticker == 0) {
-            soundContinueAll();
+            soundUpdate();
         }
     } else {
         return false;

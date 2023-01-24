@@ -847,7 +847,7 @@ static int CharEditStart()
         return -1;
     }
 
-    soundContinueAll();
+    soundUpdate();
 
     for (i = 0; i < EDITOR_GRAPHIC_COUNT; i++) {
         fid = art_id(OBJ_TYPE_INTERFACE, grph_id[i], 0, 0, 0);
@@ -873,7 +873,7 @@ static int CharEditStart()
         return -1;
     }
 
-    soundContinueAll();
+    soundUpdate();
 
     for (i = 0; i < EDITOR_GRAPHIC_COUNT; i++) {
         if (copyflag[i]) {
@@ -1096,7 +1096,7 @@ static int CharEditStart()
 
     ListSkills(0);
     DrawInfoWin();
-    soundContinueAll();
+    soundUpdate();
     PrintBigname();
     PrintAgeBig();
     PrintGender();
@@ -1312,7 +1312,7 @@ static int CharEditStart()
     }
 
     RegInfoAreas();
-    soundContinueAll();
+    soundUpdate();
 
     btn = win_register_button(
         edit_win,

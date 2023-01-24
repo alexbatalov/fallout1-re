@@ -2223,7 +2223,7 @@ static int combat_turn(Object* a1, bool a2)
             combat_free_move = 2 * perk_level(PERK_BONUS_MOVE);
             intface_update_move_points(obj_dude->data.critter.combat.ap);
         } else {
-            soundContinueAll();
+            soundUpdate();
         }
 
         if (a1->sid != -1) {

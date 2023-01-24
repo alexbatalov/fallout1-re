@@ -708,9 +708,9 @@ void dialogue_system_enter()
 
     gdDialogTurnMouseOff = true;
 
-    soundContinueAll();
+    soundUpdate();
     gdialog_enter(dialog_target, 0);
-    soundContinueAll();
+    soundUpdate();
 
     if (gdPlayerTile != obj_dude->tile) {
         gdCenterTile = obj_dude->tile;
@@ -2156,7 +2156,7 @@ static void talk_to_scroll_subwin(int win, int a2, unsigned char* a3, unsigned c
         }
 
         for (; v18 >= 0; v18--) {
-            soundContinueAll();
+            soundUpdate();
             buf_to_buf(a3,
                 GAME_DIALOG_WINDOW_WIDTH,
                 v7,
@@ -2179,7 +2179,7 @@ static void talk_to_scroll_subwin(int win, int a2, unsigned char* a3, unsigned c
         rect.uly = 0;
 
         for (int index = a6 / 10; index > 0; index--) {
-            soundContinueAll();
+            soundUpdate();
 
             buf_to_buf(a5,
                 GAME_DIALOG_WINDOW_WIDTH,
@@ -3121,7 +3121,7 @@ static int talk_to_create_head_window()
     unsigned char* buf = win_get_buf(dialogueBackWindow);
 
     for (int index = 0; index < 8; index++) {
-        soundContinueAll();
+        soundUpdate();
 
         Rect* rect = &(backgrndRects[index]);
         int width = rect->lrx - rect->ulx;

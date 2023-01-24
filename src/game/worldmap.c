@@ -1004,7 +1004,7 @@ int world_map(WorldMapContext ctx)
 
     iso_was_disabled = 0;
 
-    soundContinueAll();
+    soundUpdate();
 
     is_moving = 0;
     reselect = 0;
@@ -2585,7 +2585,7 @@ static int InitWorldMapData()
             break;
         }
 
-        soundContinueAll();
+        soundUpdate();
     }
 
     if (index != WORLDMAP_FRM_COUNT) {
@@ -2707,7 +2707,7 @@ static int InitWorldMapData()
         tbutntgl = 1;
     }
 
-    soundContinueAll();
+    soundUpdate();
     UpdateTownStatus();
     text_font(101);
 

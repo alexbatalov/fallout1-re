@@ -29,7 +29,7 @@ void palette_init()
 
     unsigned int tick = get_time();
     if (gsound_background_is_enabled() || gsound_speech_is_enabled()) {
-        colorSetFadeBkFunc(soundContinueAll);
+        colorSetFadeBkFunc(soundUpdate);
     }
 
     fadeSystemPalette(current_palette, current_palette, 60);
@@ -69,7 +69,7 @@ void palette_fade_to(unsigned char* palette)
     cycle_disable();
 
     if (gsound_background_is_enabled() || gsound_speech_is_enabled()) {
-        colorSetFadeBkFunc(soundContinueAll);
+        colorSetFadeBkFunc(soundUpdate);
     }
 
     fadeSystemPalette(current_palette, palette, fade_steps);
