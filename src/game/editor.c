@@ -185,24 +185,12 @@ enum {
     EDITOR_GRAPHIC_COUNT,
 };
 
-typedef struct KarmaEntry {
-    int gvar;
-    int art_num;
-    int name;
-    int description;
-} KarmaEntry;
-
-typedef struct GenericReputationEntry {
-    int threshold;
-    int name;
-} GenericReputationEntry;
-
-typedef struct PerkDialogOption {
+typedef struct EditorSortableEntry {
     // Depending on the current mode this value is the id of either
     // perk, trait (handling Mutate perk), or skill (handling Tag perk).
     int value;
     char* name;
-} PerkDialogOption;
+} EditorSortableEntry;
 
 static int CharEditStart();
 static void CharEditEnd();
@@ -465,7 +453,7 @@ static int skillsav[SKILL_COUNT];
 static MessageList editor_message_file;
 
 // 0x56E340
-static PerkDialogOption name_sort_list[DIALOG_PICKER_NUM_OPTIONS];
+static EditorSortableEntry name_sort_list[DIALOG_PICKER_NUM_OPTIONS];
 
 // 0x56E580
 static char old_str1[48];
@@ -5974,8 +5962,8 @@ static int ListMyTraits(int a1)
 // 0x43775C
 static int name_sort_comp(const void* a1, const void* a2)
 {
-    PerkDialogOption* v1 = (PerkDialogOption*)a1;
-    PerkDialogOption* v2 = (PerkDialogOption*)a2;
+    EditorSortableEntry* v1 = (EditorSortableEntry*)a1;
+    EditorSortableEntry* v2 = (EditorSortableEntry*)a2;
     return strcmp(v1->name, v2->name);
 }
 
