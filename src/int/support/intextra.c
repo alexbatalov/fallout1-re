@@ -2244,11 +2244,11 @@ static void op_load_map(Program* program)
     int mapIndex = -1;
 
     if (mapName != NULL) {
-        game_global_vars[32] = param;
+        game_global_vars[GVAR_LOAD_MAP_INDEX] = param;
         mapIndex = map_match_map_name(mapName);
     } else {
         if (mapIndexOrName >= 0) {
-            game_global_vars[32] = param;
+            game_global_vars[GVAR_LOAD_MAP_INDEX] = param;
             mapIndex = mapIndexOrName;
         }
     }

@@ -323,17 +323,17 @@ int gtime_q_process(Object* obj, void* data)
 
     obj_unjam_all_locks();
 
-    if (game_global_vars[101] != 2) {
-        if (game_global_vars[10] > 0) {
-            game_global_vars[10] -= 1;
+    if (game_global_vars[GVAR_FIND_WATER_CHIP] != 2) {
+        if (game_global_vars[GVAR_VAULT_WATER] > 0) {
+            game_global_vars[GVAR_VAULT_WATER] -= 1;
             if (!dialog_active()) {
-                if (game_global_vars[10] <= 100 && (water_movie_play_flag & 0x2) == 0) {
+                if (game_global_vars[GVAR_VAULT_WATER] <= 100 && (water_movie_play_flag & 0x2) == 0) {
                     water_movie_play_flag |= 0x2;
                     movie = MOVIE_BOIL1;
-                } else if (game_global_vars[10] <= 50 && (water_movie_play_flag & 0x4) == 0) {
+                } else if (game_global_vars[GVAR_VAULT_WATER] <= 50 && (water_movie_play_flag & 0x4) == 0) {
                     water_movie_play_flag |= 0x4;
                     movie = MOVIE_BOIL2;
-                } else if (game_global_vars[10] == 0) {
+                } else if (game_global_vars[GVAR_VAULT_WATER] == 0) {
                     movie = MOVIE_BOIL3;
                 }
             }

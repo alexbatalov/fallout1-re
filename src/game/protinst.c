@@ -440,29 +440,6 @@ int obj_examine_func(Object* critter, Object* target, void (*fn)(char* string))
         }
 
         fn(formattedText);
-    } else if (type == OBJ_TYPE_SCENERY) {
-        if (target->pid == PROTO_ID_CAR) {
-            MessageListItem carMessageListItem;
-            carMessageListItem.num = 549; // The car is running at %d%% power.
-
-            int car = game_get_global_var(GVAR_PLAYER_GOT_CAR);
-            if (car == 0) {
-                carMessageListItem.num = 548; // The car doesn't look like it's working right now.
-            }
-
-            if (!message_search(&proto_main_msg_file, &carMessageListItem)) {
-                debug_printf("\nError: Can't find msg num!");
-                exit(1);
-            }
-
-            // if (car != 0) {
-            //     sprintf(formattedText, carMessageListItem.text, 100 * wmCarGasAmount() / 80000);
-            // } else {
-            //     strcpy(formattedText, carMessageListItem.text);
-            // }
-
-            fn(formattedText);
-        }
     } else if (type == OBJ_TYPE_ITEM) {
         int itemType = item_get_type(target);
         if (itemType == ITEM_TYPE_WEAPON) {

@@ -2307,7 +2307,7 @@ static int ScreenSaver()
 // 0x489EC8
 static void pip_note()
 {
-    if (game_global_vars[101] == 2 || game_global_vars[10] == 0) {
+    if (game_global_vars[GVAR_FIND_WATER_CHIP] == 2 || game_global_vars[GVAR_VAULT_WATER] == 0) {
         buf_to_buf(pipbmp[PIPBOY_FRM_BACKGROUND] + PIPBOY_WINDOW_WIDTH * 83 + 32,
             ginfo[PIPBOY_FRM_NOTE].width,
             ginfo[PIPBOY_FRM_NOTE].height,
@@ -2323,5 +2323,5 @@ static void pip_note()
         scrn_buf + PIPBOY_WINDOW_WIDTH * 83 + 32,
         PIPBOY_WINDOW_WIDTH);
 
-    pip_days_left(game_global_vars[10]);
+    pip_days_left(game_global_vars[GVAR_VAULT_WATER]);
 }

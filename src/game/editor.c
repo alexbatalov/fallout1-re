@@ -401,15 +401,15 @@ static const int StatYpos[7] = {
 
 // 0x42C33C
 static const int karma_var_table[9] = {
-    156,
-    157,
-    158,
-    189,
-    190,
-    191,
-    192,
-    193,
-    194,
+    GVAR_BERSERKER_REPUTATION,
+    GVAR_CHAMPION_REPUTATION,
+    GVAR_CHILDKILLER_REPUATION,
+    GVAR_NUKA_COLA_ADDICT,
+    GVAR_BUFF_OUT_ADDICT,
+    GVAR_MENTATS_ADDICT,
+    GVAR_PSYCHO_ADDICT,
+    GVAR_RADAWAY_ADDICT,
+    GVAR_ALCOHOL_ADDICT,
 };
 
 // 0x42C360
@@ -5077,7 +5077,7 @@ static int ListKarma()
     }
 
     strcpy(text, getmsg(&editor_message_file, &mesg, 1000));
-    strcat(text, itoa(game_global_vars[155], buffer, 10));
+    strcat(text, itoa(game_global_vars[GVAR_PLAYER_REPUATION], buffer, 10));
     text_to_buf(win_buf + 640 * 362 + 34, text, 640, 640, color);
 
     count = 1;

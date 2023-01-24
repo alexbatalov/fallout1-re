@@ -2044,7 +2044,7 @@ int world_map(WorldMapContext ctx)
 
         if (is_entering_random_terrain) {
             debug_printf("\nWORLD MAP: Droping out to random terrain area map.\n");
-            game_global_vars[65] = WorldEcounTable[world_ypos / 50][world_xpos / 50];
+            game_global_vars[GVAR_WORLD_TERRAIN] = WorldEcounTable[world_ypos / 50][world_xpos / 50];
 
             terrain = WorldTerraTable[world_ypos / 50][world_xpos / 50];
             while (1) {
@@ -2071,7 +2071,7 @@ int world_map(WorldMapContext ctx)
             if (special_enc_num != 0) {
                 // FIXME: Typo.
                 debug_printf("\nWORLD MAP: Doing specail map index #%d...\n", special_enc_num - 1);
-                game_global_vars[65] = WorldEcounTable[world_ypos / 50][world_xpos / 50];
+                game_global_vars[GVAR_WORLD_TERRAIN] = WorldEcounTable[world_ypos / 50][world_xpos / 50];
 
                 for (index = 0; index < TOWN_COUNT; index++) {
                     win_disable_button(TownBttns[index]);
@@ -2083,7 +2083,7 @@ int world_map(WorldMapContext ctx)
                     return -1;
                 }
             } else {
-                game_global_vars[65] = WorldEcounTable[world_ypos / 50][world_xpos / 50];
+                game_global_vars[GVAR_WORLD_TERRAIN] = WorldEcounTable[world_ypos / 50][world_xpos / 50];
 
                 terrain = WorldTerraTable[world_ypos / 50][world_xpos / 50];
                 while (1) {
@@ -2389,22 +2389,22 @@ static int CheckEvents()
 {
     int rc = 0;
 
-    if (game_global_vars[10] == 0 && game_global_vars[101] != 2) {
+    if (game_global_vars[GVAR_VAULT_WATER] == 0 && game_global_vars[GVAR_FIND_WATER_CHIP] != 2) {
         debug_printf("\nWORLD MAP: Vault water time ran out (death).\n");
         BlackOut();
         gmovie_play(MOVIE_BOIL3, GAME_MOVIE_FADE_IN | GAME_MOVIE_FADE_OUT | GAME_MOVIE_PAUSE_MUSIC);
         game_user_wants_to_quit = 1;
         rc = 1;
     } else {
-        if (game_global_vars[147] != 0) {
-            if ((game_time() - game_global_vars[147]) / 10 > 240) {
+        if (game_global_vars[GVAR_VATS_COUNTDOWN] != 0) {
+            if ((game_time() - game_global_vars[GVAR_VATS_COUNTDOWN]) / 10 > 240) {
                 // FIXME: Typo.
                 debug_printf("\nWORLD MAP: Doing \"Vats explode\" specail.\n");
 
                 gmovie_play(MOVIE_VEXPLD, GAME_MOVIE_FADE_IN | GAME_MOVIE_FADE_OUT | GAME_MOVIE_PAUSE_MUSIC);
-                game_global_vars[308] = 2;
+                game_global_vars[GVAR_DESTROY_MASTER_4] = 2;
 
-                if (game_global_vars[18] != 0) {
+                if (game_global_vars[GVAR_MASTER_BLOWN] != 0) {
                     worldmap_script_jump(0, 0);
 
                     rc = 1;
@@ -2414,30 +2414,30 @@ static int CheckEvents()
                 }
 
                 stat_pc_add_experience(10000);
-                game_global_vars[155] += 5;
+                game_global_vars[GVAR_PLAYER_REPUATION] += 5;
 
                 // NOTE: Looks like min/max macro usage.
-                if (game_global_vars[155] < -100) {
-                    game_global_vars[155] = -100;
-                } else if (game_global_vars[155] > 100) {
-                    game_global_vars[155] = 100;
+                if (game_global_vars[GVAR_PLAYER_REPUATION] < -100) {
+                    game_global_vars[GVAR_PLAYER_REPUATION] = -100;
+                } else if (game_global_vars[GVAR_PLAYER_REPUATION] > 100) {
+                    game_global_vars[GVAR_PLAYER_REPUATION] = 100;
                 }
 
                 display_print(getmsg(&wrldmap_mesg_file, &mesg, 500));
 
-                game_global_vars[147] = 0;
-                game_global_vars[17] = 1;
+                game_global_vars[GVAR_VATS_COUNTDOWN] = 0;
+                game_global_vars[GVAR_VATS_BLOWN] = 1;
             }
 
-            if (game_global_vars[55] != 0) {
-                if ((game_time() - game_global_vars[55]) / 10 > 240) {
+            if (game_global_vars[GVAR_COUNTDOWN_TO_DESTRUCTION] != 0) {
+                if ((game_time() - game_global_vars[GVAR_COUNTDOWN_TO_DESTRUCTION]) / 10 > 240) {
                     // FIXME: Typo.
                     debug_printf("\nWORLD MAP: Doing \"Master lair explode\" specail.\n");
 
                     gmovie_play(MOVIE_CATHEXP, GAME_MOVIE_FADE_IN | GAME_MOVIE_FADE_OUT | GAME_MOVIE_PAUSE_MUSIC);
-                    game_global_vars[309] = 2;
+                    game_global_vars[GVAR_DESTROY_MASTER_5] = 2;
 
-                    if (game_global_vars[17] != 0) {
+                    if (game_global_vars[GVAR_VATS_BLOWN] != 0) {
                         worldmap_script_jump(0, 0);
 
                         rc = 1;
@@ -2448,17 +2448,17 @@ static int CheckEvents()
 
                     stat_pc_add_experience(10000);
 
-                    game_global_vars[155] += 10;
+                    game_global_vars[GVAR_PLAYER_REPUATION] += 10;
 
                     // NOTE: Looks like min/max macro usage.
-                    if (game_global_vars[155] < -100) {
-                        game_global_vars[155] = -100;
-                    } else if (game_global_vars[155] > 100) {
-                        game_global_vars[155] = 100;
+                    if (game_global_vars[GVAR_PLAYER_REPUATION] < -100) {
+                        game_global_vars[GVAR_PLAYER_REPUATION] = -100;
+                    } else if (game_global_vars[GVAR_PLAYER_REPUATION] > 100) {
+                        game_global_vars[GVAR_PLAYER_REPUATION] = 100;
                     }
 
-                    game_global_vars[55] = 0;
-                    game_global_vars[18] = 1;
+                    game_global_vars[GVAR_COUNTDOWN_TO_DESTRUCTION] = 0;
+                    game_global_vars[GVAR_MASTER_BLOWN] = 1;
                 }
             }
         }
@@ -2480,12 +2480,12 @@ static int LoadTownMap(const char* filename, int map_idx)
     strcpy(mbdead_map_filename, "MBDEAD.MAP");
 
     debug = 1;
-    if (game_global_vars[18] != 0 && strcmp(filename, TownHotSpots[TOWN_CATHEDRAL][0].name) == 0) {
+    if (game_global_vars[GVAR_MASTER_BLOWN] != 0 && strcmp(filename, TownHotSpots[TOWN_CATHEDRAL][0].name) == 0) {
         filename = childead_map_filename;
         map_idx = 0;
         debug = 0;
         debug_printf("WORLD MAP: Loading special \"crater\" map, filename: %s, map index#: %d.\n", childead_map_filename, 0);
-    } else if (game_global_vars[17] != 0) {
+    } else if (game_global_vars[GVAR_VATS_BLOWN] != 0) {
         for (index = 0; index < 5; index++) {
             if (strcmp(filename, TownHotSpots[TOWN_MILITARY_BASE][index].name) == 0) {
                 filename = mbdead_map_filename;
@@ -2505,7 +2505,7 @@ static int LoadTownMap(const char* filename, int map_idx)
 
     win_draw(world_win);
 
-    game_global_vars[32] = map_idx;
+    game_global_vars[GVAR_LOAD_MAP_INDEX] = map_idx;
 
     // NOTE: Needed to silence compiler warnings on `const` qualifier as
     // subsequent `map_load` wants filename to be mutable.
@@ -2775,13 +2775,13 @@ static void UpdateTownStatus()
         TwnSelKnwFlag[TOWN_VAULT_13][3] = 0;
     }
 
-    if (game_global_vars[18] != 0
+    if (game_global_vars[GVAR_MASTER_BLOWN] != 0
         || TwnSelKnwFlag[TOWN_CATHEDRAL][0]
         || TwnSelKnwFlag[TOWN_CATHEDRAL][1]) {
         TwnSelKnwFlag[TOWN_SPECIAL_12][0] = 1;
     }
 
-    if (game_global_vars[17] != 0
+    if (game_global_vars[GVAR_VATS_BLOWN] != 0
         || TwnSelKnwFlag[TOWN_MILITARY_BASE][0]
         || TwnSelKnwFlag[TOWN_MILITARY_BASE][1]
         || TwnSelKnwFlag[TOWN_MILITARY_BASE][2]
@@ -3471,10 +3471,10 @@ static int RegTMAPsels(int win, int city)
     int button_x;
     int button_y;
 
-    if (city == TOWN_CATHEDRAL && game_global_vars[18] != 0) {
+    if (city == TOWN_CATHEDRAL && game_global_vars[GVAR_MASTER_BLOWN] != 0) {
         city = TOWN_SPECIAL_12;
         v4 = 1;
-    } else if (city == TOWN_MILITARY_BASE && game_global_vars[17] != 0) {
+    } else if (city == TOWN_MILITARY_BASE && game_global_vars[GVAR_VATS_BLOWN] != 0) {
         city = TOWN_SPECIAL_13;
         v4 = 2;
     }
@@ -3568,9 +3568,9 @@ static void DrawTMAPsels(int win, int city)
     int index;
     TownHotSpotEntry* entry;
 
-    if (city == TOWN_CATHEDRAL && game_global_vars[18] != 0) {
+    if (city == TOWN_CATHEDRAL && game_global_vars[GVAR_MASTER_BLOWN] != 0) {
         city = TOWN_SPECIAL_12;
-    } else if (city == TOWN_MILITARY_BASE && game_global_vars[17] != 0) {
+    } else if (city == TOWN_MILITARY_BASE && game_global_vars[GVAR_VATS_BLOWN] != 0) {
         city = TOWN_SPECIAL_13;
     }
 

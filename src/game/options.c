@@ -928,7 +928,7 @@ static int PrefStart()
 
     text_font(103);
 
-    if (game_global_vars[603]) {
+    if (game_global_vars[GVAR_RUNNING_BURNING_GUY]) {
         button_count = 5;
     } else {
         buf_to_buf(prfbmp[PREFERENCES_WINDOW_FRM_6],
@@ -947,7 +947,7 @@ static int PrefStart()
         text_to_buf(prefbuf + PREFERENCES_WINDOW_WIDTH * row1Ytab[i] + x, messageItemText, PREFERENCES_WINDOW_WIDTH, PREFERENCES_WINDOW_WIDTH, colorTable[18979]);
     }
 
-    if (!game_global_vars[603]) {
+    if (!game_global_vars[GVAR_RUNNING_BURNING_GUY]) {
         messageItemId++;
     }
 
@@ -1417,7 +1417,7 @@ static void UpdateThing(int index)
 
         int primaryOptionIndex = index - FIRST_PRIMARY_PREF;
 
-        if (primaryOptionIndex == PREF_RUNNING_BURNING_GUY && !game_global_vars[603]) {
+        if (primaryOptionIndex == PREF_RUNNING_BURNING_GUY && !game_global_vars[GVAR_RUNNING_BURNING_GUY]) {
             return;
         }
 

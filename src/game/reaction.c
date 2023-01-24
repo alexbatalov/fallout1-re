@@ -103,10 +103,10 @@ int reaction_get(Object* critter)
             return -1;
         }
 
-        if (game_get_global_var(155) > 0) {
-            scr_set_local_var(sid, 0, game_get_global_var(155) + v2);
+        if (game_get_global_var(GVAR_PLAYER_REPUATION) > 0) {
+            scr_set_local_var(sid, 0, game_get_global_var(GVAR_PLAYER_REPUATION) + v2);
         } else {
-            scr_set_local_var(sid, 0, v2 - game_get_global_var(155));
+            scr_set_local_var(sid, 0, v2 - game_get_global_var(GVAR_PLAYER_REPUATION));
         }
     } else {
         if (scr_get_local_var(sid, 3, &v1) == -1) {
@@ -118,13 +118,13 @@ int reaction_get(Object* critter)
         }
 
         if (v1 != 1) {
-            scr_set_local_var(sid, 0, game_get_global_var(155) + v2);
+            scr_set_local_var(sid, 0, game_get_global_var(GVAR_PLAYER_REPUATION) + v2);
         } else {
-            scr_set_local_var(sid, 0, v2 - game_get_global_var(155));
+            scr_set_local_var(sid, 0, v2 - game_get_global_var(GVAR_PLAYER_REPUATION));
         }
     }
 
-    if (game_get_global_var(158) > 2) {
+    if (game_get_global_var(GVAR_CHILDKILLER_REPUATION) > 2) {
         if (scr_get_local_var(sid, 0, &v2) == -1) {
             return -1;
         }
@@ -132,7 +132,7 @@ int reaction_get(Object* critter)
         scr_set_local_var(sid, 0, v2 - 30);
     }
 
-    if (game_get_global_var(160) > 3 * game_get_global_var(159) || game_get_global_var(157) == 1) {
+    if (game_get_global_var(GVAR_BAD_MONSTER) > 3 * game_get_global_var(GVAR_GOOD_MONSTER) || game_get_global_var(GVAR_CHAMPION_REPUTATION) == 1) {
         if (scr_get_local_var(sid, 0, &v2) == -1) {
             return -1;
         }
@@ -140,7 +140,7 @@ int reaction_get(Object* critter)
         scr_set_local_var(sid, 0, v2 + 20);
     }
 
-    if (game_get_global_var(159) > 2 * game_get_global_var(160) || game_get_global_var(156) == 1) {
+    if (game_get_global_var(GVAR_GOOD_MONSTER) > 2 * game_get_global_var(GVAR_BAD_MONSTER) || game_get_global_var(GVAR_BERSERKER_REPUTATION) == 1) {
         if (scr_get_local_var(sid, 0, &v2) == -1) {
             return -1;
         }

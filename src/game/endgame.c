@@ -184,17 +184,17 @@ void endgame_slideshow()
     int v1;
 
     if (endgame_init() != -1) {
-        if (game_get_global_var(51)) {
+        if (game_get_global_var(GVAR_VATS_STATUS)) {
             endgame_pan_desert(1, "nar_11");
         } else {
             endgame_pan_desert(1, "nar_10");
         }
 
-        if (game_get_global_var(13)) {
+        if (game_get_global_var(GVAR_NECROPOLIS_INVADED)) {
             fid = art_id(OBJ_TYPE_INTERFACE, 311, 0, 0, 0);
             endgame_display_image(fid, "nar_15");
-        } else if (game_get_global_var(30)) {
-            if (game_get_global_var(31) == 2) {
+        } else if (game_get_global_var(GVAR_NECROP_WATER_CHIP_TAKEN)) {
+            if (game_get_global_var(GVAR_NECROP_WATER_PUMP_FIXED) == 2) {
                 fid = art_id(OBJ_TYPE_INTERFACE, 312, 0, 0, 0);
                 endgame_display_image(fid, "nar_13");
             } else {
@@ -203,20 +203,20 @@ void endgame_slideshow()
             }
         }
 
-        if (game_get_global_var(7)) {
+        if (game_get_global_var(GVAR_FOLLOWERS_INVADED)) {
             fid = art_id(OBJ_TYPE_INTERFACE, 314, 0, 0, 0);
             endgame_display_image(fid, "nar_18");
-        } else if (game_get_global_var(132)) {
+        } else if (game_get_global_var(GVAR_TRAIN_FOLLOWERS)) {
             fid = art_id(OBJ_TYPE_INTERFACE, 313, 0, 0, 0);
             endgame_display_image(fid, "nar_16");
         }
 
-        if (game_get_global_var(12)) {
+        if (game_get_global_var(GVAR_SHADY_SANDS_INVADED)) {
             fid = art_id(OBJ_TYPE_INTERFACE, 324, 0, 0, 0);
             endgame_display_image(fid, "nar_23");
         } else {
-            v1 = game_get_global_var(26);
-            if (game_get_global_var(604)) {
+            v1 = game_get_global_var(GVAR_TANDI_STATUS);
+            if (game_get_global_var(GVAR_ARADESH_STATUS)) {
                 if (v1 != 2 && v1 != 0) {
                     fid = art_id(OBJ_TYPE_INTERFACE, 324, 0, 0, 0);
                     endgame_display_image(fid, "nar_22");
@@ -235,11 +235,11 @@ void endgame_slideshow()
             }
         }
 
-        if (game_get_global_var(15)) {
+        if (game_get_global_var(GVAR_JUNKTOWN_INVADED)) {
             fid = art_id(OBJ_TYPE_INTERFACE, 317, 0, 0, 0);
             endgame_display_image(fid, "nar_27");
-        } else if (game_get_global_var(104) != 2 || game_get_global_var(37)) {
-            if (!game_get_global_var(38)) {
+        } else if (game_get_global_var(GVAR_CAPTURE_GIZMO) != 2 || game_get_global_var(GVAR_KILLIAN_DEAD)) {
+            if (!game_get_global_var(GVAR_GIZMO_DEAD)) {
                 fid = art_id(OBJ_TYPE_INTERFACE, 316, 0, 0, 0);
                 endgame_display_image(fid, "nar_25");
             }
@@ -248,7 +248,7 @@ void endgame_slideshow()
             endgame_display_image(fid, "nar_24");
         }
 
-        if (game_get_global_var(108) == 2 && game_get_global_var(250)) {
+        if (game_get_global_var(GVAR_BECOME_AN_INITIATE) == 2 && game_get_global_var(GVAR_ENEMY_BROTHERHOOD)) {
             fid = art_id(OBJ_TYPE_INTERFACE, 319, 0, 0, 0);
             endgame_display_image(fid, "nar_29");
         } else {
@@ -256,20 +256,20 @@ void endgame_slideshow()
             endgame_display_image(fid, "nar_28");
         }
 
-        if (game_get_global_var(14)) {
+        if (game_get_global_var(GVAR_HUB_INVADED)) {
             fid = art_id(OBJ_TYPE_INTERFACE, 326, 0, 0, 0);
             endgame_display_image(fid, "nar_34");
-        } else if (game_get_global_var(606) == 1) {
+        } else if (game_get_global_var(GVAR_KIND_TO_HAROLD) == 1) {
             fid = art_id(OBJ_TYPE_INTERFACE, 325, 0, 0, 0);
             endgame_display_image(fid, "nar_32");
         }
 
-        if (game_get_global_var(69) < 2) {
+        if (game_get_global_var(GVAR_RAIDERS) < 2) {
             fid = art_id(OBJ_TYPE_INTERFACE, 320, 0, 0, 0);
             endgame_display_image(fid, "nar_37");
         } else {
-            v1 = game_get_global_var(115);
-            if (game_get_global_var(114) && v1 < 8 || v1 < 4) {
+            v1 = game_get_global_var(GVAR_TOTAL_RAIDERS);
+            if (game_get_global_var(GVAR_GARL_DEAD) && v1 < 8 || v1 < 4) {
                 fid = art_id(OBJ_TYPE_INTERFACE, 320, 0, 0, 0);
                 endgame_display_image(fid, "nar_35");
             } else {
@@ -283,7 +283,7 @@ void endgame_slideshow()
         endgame_exit();
     }
 
-    game_set_global_var(299, 0);
+    game_set_global_var(GVAR_CALM_REBELS_2, 0);
 }
 
 // 0x438A4C
