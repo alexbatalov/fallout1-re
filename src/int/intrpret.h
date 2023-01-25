@@ -172,7 +172,6 @@ char* interpretMangleName(char* fileName);
 void interpretOutputFunc(InterpretOutputFunc* func);
 int interpretOutput(const char* format, ...);
 void interpretError(const char* format, ...);
-void interpretDecStringRef(Program* program, opcode_t a2, int a3);
 void interpretPushShort(Program* program, int value);
 void interpretPushLong(Program* program, int value);
 opcode_t interpretPopShort(Program* program);
@@ -202,6 +201,6 @@ void interpretSetFilenameFunc(InterpretMangleFunc* func);
 void interpretSuspendEvents();
 void interpretResumeEvents();
 int interpretSaveProgramState();
-void interpretDumpStringHeap();
+int interpretLoadProgramState();
 
 #endif /* FALLOUT_INT_INTRPRET_H_ */

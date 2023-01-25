@@ -10,12 +10,16 @@
 #include "int/export.h"
 #include "int/intlib.h"
 #include "int/memdbg.h"
+#include "plib/color/color.h"
 #include "plib/db/db.h"
 #include "plib/gnw/debug.h"
 #include "plib/gnw/input.h"
 
 // The maximum number of opcodes.
 #define OPCODE_MAX_COUNT 342
+
+// Size of internal stack in bytes (per program).
+#define STACK_SIZE 0x800
 
 typedef struct ProgramListNode {
     Program* program;
@@ -160,52 +164,50 @@ static ProgramListNode* head;
 // 0x59E794
 static int suspendEvents;
 
-// 0x4670A0
+// 0x45B400
 static unsigned int defaultTimerFunc()
 {
     return get_time();
 }
 
-// NOTE: Unused.
-//
-// 0x4670A8
+// 0x45B408
 void interpretSetTimeFunc(InterpretTimerFunc* timerFunc, int timerTick)
 {
     timerFunc = timerFunc;
     timerTick = timerTick;
 }
 
-// 0x4670B4
+// 0x45B414
 static char* defaultFilename(char* fileName)
 {
     return fileName;
 }
 
-// 0x4670B8
+// 0x45B418
 char* interpretMangleName(char* fileName)
 {
     return filenameFunc(fileName);
 }
 
-// 0x4670C0
+// 0x45B420
 static int outputStr(char* string)
 {
     return 1;
 }
 
-// 0x4670C8
+// 0x45B428
 static int checkWait(Program* program)
 {
     return 1000 * timerFunc() / timerTick <= program->waitEnd;
 }
 
-// 0x4670FC
+// 0x45B45C
 void interpretOutputFunc(InterpretOutputFunc* func)
 {
     outputFunc = func;
 }
 
-// 0x467104
+// 0x45B464
 int interpretOutput(const char* format, ...)
 {
     if (outputFunc == NULL) {
@@ -224,7 +226,7 @@ int interpretOutput(const char* format, ...)
     return rc;
 }
 
-// 0x467160
+// 0x45B4C0
 static const char* findCurrentProc(Program* program)
 {
     int procedureCount = fetchLong(program->procedures, 0);
@@ -246,10 +248,13 @@ static const char* findCurrentProc(Program* program)
     return "<couldn't find proc>";
 }
 
-// 0x4671F0
+// 0x45B5E4
 void interpretError(const char* format, ...)
 {
     char string[260];
+
+    fadeSystemPalette(cmap, cmap, 0);
+    mouse_show();
 
     va_list argptr;
     va_start(argptr, format);
@@ -269,17 +274,16 @@ void interpretError(const char* format, ...)
     }
 }
 
-// 0x467290
+// 0x45B698
 static opcode_t fetchWord(unsigned char* data, int pos)
 {
-    // TODO: The return result is probably short.
     opcode_t value = 0;
     value |= data[pos++] << 8;
     value |= data[pos++];
     return value;
 }
 
-// 0x4672A4
+// 0x45B6AC
 static int fetchLong(unsigned char* data, int pos)
 {
     int value = 0;
@@ -291,16 +295,14 @@ static int fetchLong(unsigned char* data, int pos)
     return value;
 }
 
-// 0x4672D4
+// 0x45B6DC
 static void storeWord(int value, unsigned char* stack, int pos)
 {
     stack[pos++] = (value >> 8) & 0xFF;
     stack[pos] = value & 0xFF;
 }
 
-// NOTE: Inlined.
-//
-// 0x4672E8
+// 0x45B6F0
 static void storeLong(int value, unsigned char* stack, int pos)
 {
     stack[pos++] = (value >> 24) & 0xFF;
@@ -309,11 +311,10 @@ static void storeLong(int value, unsigned char* stack, int pos)
     stack[pos] = value & 0xFF;
 }
 
-// pushShortStack
-// 0x467324
+// 0x45B72C
 static void pushShortStack(unsigned char* data, int* pointer, int value)
 {
-    if (*pointer + 2 >= 0x1000) {
+    if (*pointer + 2 >= STACK_SIZE) {
         interpretError("pushShortStack: Stack overflow.");
     }
 
@@ -322,13 +323,12 @@ static void pushShortStack(unsigned char* data, int* pointer, int value)
     *pointer += 2;
 }
 
-// pushLongStack
-// 0x46736C
+// 0x45B774
 static void pushLongStack(unsigned char* data, int* pointer, int value)
 {
     int v1;
 
-    if (*pointer + 4 >= 0x1000) {
+    if (*pointer + 4 >= STACK_SIZE) {
         // FIXME: Should be pushLongStack.
         interpretError("pushShortStack: Stack overflow.");
     }
@@ -339,8 +339,7 @@ static void pushLongStack(unsigned char* data, int* pointer, int value)
     *pointer = v1 + 4;
 }
 
-// popStackLong
-// 0x4673C4
+// 0x45B7CC
 static int popLongStack(unsigned char* data, int* pointer)
 {
     if (*pointer < 4) {
@@ -352,8 +351,7 @@ static int popLongStack(unsigned char* data, int* pointer)
     return fetchLong(data, *pointer);
 }
 
-// popStackShort
-// 0x4673F0
+// 0x45B814
 static opcode_t popShortStack(unsigned char* data, int* pointer)
 {
     if (*pointer < 2) {
@@ -366,120 +364,55 @@ static opcode_t popShortStack(unsigned char* data, int* pointer)
     return fetchWord(data, *pointer);
 }
 
-// NOTE: Inlined.
-//
-// 0x467424
-void _interpretIncStringRef(Program* program, opcode_t opcode, int value)
-{
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        *(short*)(program->dynamicStrings + 4 + value - 2) += 1;
-    }
-}
-
-// 0x467440
-void interpretDecStringRef(Program* program, opcode_t opcode, int value)
-{
-    char* string;
-    short* refcountPtr;
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        string = (char*)(program->dynamicStrings + 4 + value);
-        refcountPtr = (short*)(string - 2);
-
-        if (*refcountPtr != 0) {
-            *refcountPtr -= 1;
-        } else {
-            debug_printf("Reference count zero for %s!\n", string);
-        }
-
-        if (*refcountPtr < 0) {
-            debug_printf("String ref went negative, this shouldn\'t ever happen\n");
-        }
-    }
-}
-
-// 0x46748C
+// 0x45B848
 void interpretPushShort(Program* program, int value)
 {
-    int stringOffset;
-
     pushShortStack(program->stack, &(program->stackPointer), value);
-
-    if (value == VALUE_TYPE_DYNAMIC_STRING) {
-        if (program->stackPointer >= 6) {
-            stringOffset = fetchLong(program->stack, program->stackPointer - 6);
-            // NOTE: Uninline.
-            _interpretIncStringRef(program, VALUE_TYPE_DYNAMIC_STRING, stringOffset);
-        }
-    }
 }
 
-// 0x4674DC
+// 0x45B85C
 void interpretPushLong(Program* program, int value)
 {
     pushLongStack(program->stack, &(program->stackPointer), value);
 }
 
-// 0x4674F0
+// 0x45B870
 opcode_t interpretPopShort(Program* program)
 {
     return popShortStack(program->stack, &(program->stackPointer));
 }
 
-// 0x467500
+// 0x45B880
 int interpretPopLong(Program* program)
 {
     return popLongStack(program->stack, &(program->stackPointer));
 }
 
-// 0x467510
+// 0x45B890
 static void rPushShort(Program* program, int value)
 {
-    int stringOffset;
-
     pushShortStack(program->returnStack, &(program->returnStackPointer), value);
-
-    if (value == VALUE_TYPE_DYNAMIC_STRING) {
-        if (program->stackPointer >= 6) {
-            stringOffset = fetchLong(program->returnStack, program->returnStackPointer - 6);
-            // NOTE: Uninline.
-            _interpretIncStringRef(program, VALUE_TYPE_DYNAMIC_STRING, stringOffset);
-        }
-    }
 }
 
-// NOTE: Inlined.
-//
-// 0x467560
+// 0x45B8A4
 static void rPushLong(Program* program, int value)
 {
     pushLongStack(program->returnStack, &(program->returnStackPointer), value);
 }
 
-// 0x467574
+// 0x45B8B8
 static opcode_t rPopShort(Program* program)
 {
-    opcode_t type;
-    int v5;
-
-    type = popShortStack(program->returnStack, &(program->returnStackPointer));
-    if (type == VALUE_TYPE_DYNAMIC_STRING && program->stackPointer >= 4) {
-        v5 = fetchLong(program->returnStack, program->returnStackPointer - 4);
-        interpretDecStringRef(program, type, v5);
-    }
-
-    return type;
+    return popShortStack(program->returnStack, &(program->returnStackPointer));
 }
 
-// 0x4675B8
+// 0x45B8C8
 static int rPopLong(Program* program)
 {
     return popLongStack(program->returnStack, &(program->returnStackPointer));
 }
 
-// NOTE: Inlined.
-//
-// 0x4675C8
+// 0x45B8D8
 static void detachProgram(Program* program)
 {
     Program* parent = program->parent;
@@ -492,7 +425,7 @@ static void detachProgram(Program* program)
     }
 }
 
-// 0x4675F4
+// 0x45B904
 static void purgeProgram(Program* program)
 {
     if (!program->exited) {
@@ -501,7 +434,7 @@ static void purgeProgram(Program* program)
     }
 }
 
-// 0x467614
+// 0x45B924
 void interpretFreeProgram(Program* program)
 {
     // NOTE: Uninline.
@@ -524,29 +457,29 @@ void interpretFreeProgram(Program* program)
     purgeProgram(program);
 
     if (program->dynamicStrings != NULL) {
-        myfree(program->dynamicStrings, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 429
+        myfree(program->dynamicStrings, __FILE__, __LINE__); // "..\int\INTRPRET.C", 371
     }
 
     if (program->data != NULL) {
-        myfree(program->data, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 430
+        myfree(program->data, __FILE__, __LINE__); // "..\int\INTRPRET.C", 372
     }
 
     if (program->name != NULL) {
-        myfree(program->name, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 431
+        myfree(program->name, __FILE__, __LINE__); // "..\int\INTRPRET.C", 373
     }
 
     if (program->stack != NULL) {
-        myfree(program->stack, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 432
+        myfree(program->stack, __FILE__, __LINE__); // "..\int\INTRPRET.C", 374
     }
 
     if (program->returnStack != NULL) {
-        myfree(program->returnStack, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 433
+        myfree(program->returnStack, __FILE__, __LINE__); // "..\int\INTRPRET.C", 375
     }
 
-    myfree(program, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 435
+    myfree(program, __FILE__, __LINE__); // "..\int\INTRPRET.C", 377
 }
 
-// 0x467734
+// 0x45BA44
 Program* allocateProgram(const char* path)
 {
     DB_FILE* stream = db_fopen(path, "rb");
@@ -558,25 +491,25 @@ Program* allocateProgram(const char* path)
     }
 
     int fileSize = db_filelength(stream);
-    unsigned char* data = (unsigned char*)mymalloc(fileSize, __FILE__, __LINE__); // ..\\int\\INTRPRET.C, 458
+    unsigned char* data = (unsigned char*)mymalloc(fileSize, __FILE__, __LINE__); // ..\int\INTRPRET.C, 398
 
     db_fread(data, 1, fileSize, stream);
     db_fclose(stream);
 
-    Program* program = (Program*)mymalloc(sizeof(Program), __FILE__, __LINE__); // ..\\int\\INTRPRET.C, 463
+    Program* program = (Program*)mymalloc(sizeof(Program), __FILE__, __LINE__); // ..\int\INTRPRET.C, 402
     memset(program, 0, sizeof(Program));
 
-    program->name = (char*)mymalloc(strlen(path) + 1, __FILE__, __LINE__); // ..\\int\\INTRPRET.C, 466
+    program->name = (char*)mymalloc(strlen(path) + 1, __FILE__, __LINE__); // ..\int\INTRPRET.C, 405
     strcpy(program->name, path);
 
     program->child = NULL;
     program->parent = NULL;
     program->field_78 = -1;
-    program->stack = (unsigned char*)mycalloc(1, 4096, __FILE__, __LINE__); // ..\\int\\INTRPRET.C, 472
+    program->stack = (unsigned char*)mycalloc(1, STACK_SIZE, __FILE__, __LINE__); // ..\int\INTRPRET.C, 410
     program->exited = false;
     program->basePointer = -1;
     program->framePointer = -1;
-    program->returnStack = (unsigned char*)mycalloc(1, 4096, __FILE__, __LINE__); // ..\\int\\INTRPRET.C, 473
+    program->returnStack = (unsigned char*)mycalloc(1, STACK_SIZE, __FILE__, __LINE__); // ..\int\INTRPRET.C, 411
     program->data = data;
     program->procedures = data + 42;
     program->identifiers = sizeof(Procedure) * fetchLong(program->procedures, 0) + program->procedures + 4;
@@ -585,9 +518,7 @@ Program* allocateProgram(const char* path)
     return program;
 }
 
-// NOTE: Inlined.
-//
-// 0x4678BC
+// 0x45BC08
 static opcode_t getOp(Program* program)
 {
     int instructionPointer;
@@ -599,7 +530,7 @@ static opcode_t getOp(Program* program)
     return fetchWord(program->data, instructionPointer);
 }
 
-// 0x4678E0
+// 0x45BC2C
 char* interpretGetString(Program* program, opcode_t opcode, int offset)
 {
     // The order of checks is important, because dynamic string flag is
@@ -616,62 +547,13 @@ char* interpretGetString(Program* program, opcode_t opcode, int offset)
     return NULL;
 }
 
-// 0x46790C
+// 0x45BC58
 char* interpretGetName(Program* program, int offset)
 {
     return (char*)(program->identifiers + offset);
 }
 
-// Loops thru heap:
-// - mark unreferenced blocks as free.
-// - merge consequtive free blocks as one large block.
-//
-// This is done by negating block length:
-// - positive block length - check for ref count.
-// - negative block length - block is free, attempt to merge with next block.
-//
-// 0x4679E0
-static void checkProgramStrings(Program* program)
-{
-    unsigned char* ptr;
-    short len;
-    unsigned char* next_ptr;
-    short next_len;
-    short diff;
-
-    if (program->dynamicStrings == NULL) {
-        return;
-    }
-
-    ptr = program->dynamicStrings + 4;
-    while (*(unsigned short*)ptr != 0x8000) {
-        len = *(short*)ptr;
-        if (len < 0) {
-            len = -len;
-            next_ptr = ptr + len + 4;
-
-            if (*(unsigned short*)next_ptr != 0x8000) {
-                next_len = *(short*)next_ptr;
-                if (next_len < 0) {
-                    diff = 4 - next_len;
-                    if (diff + len < 32766) {
-                        len += diff;
-                        *(short*)ptr += next_len - 4;
-                    } else {
-                        debug_printf("merged string would be too long, size %d %d\n", diff, len);
-                    }
-                }
-            }
-        } else if (*(short*)(ptr + 2) == 0) {
-            *(short*)ptr = -len;
-            *(short*)(ptr + 2) = 0;
-        }
-
-        ptr += len + 4;
-    }
-}
-
-// 0x467A80
+// 0x45BC64
 int interpretAddString(Program* program, char* string)
 {
     int v27;
@@ -721,13 +603,13 @@ int interpretAddString(Program* program, char* string)
             heap += v2 + 4;
         }
     } else {
-        program->dynamicStrings = (unsigned char*)mymalloc(8, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 631
+        program->dynamicStrings = (unsigned char*)mymalloc(8, __FILE__, __LINE__); // "..\int\INTRPRET.C", 459
         *(int*)(program->dynamicStrings) = 0;
         *(unsigned short*)(program->dynamicStrings + 4) = 0x8000;
         *(short*)(program->dynamicStrings + 6) = 1;
     }
 
-    program->dynamicStrings = (unsigned char*)myrealloc(program->dynamicStrings, *(int*)(program->dynamicStrings) + 8 + 4 + v27, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 640
+    program->dynamicStrings = (unsigned char*)myrealloc(program->dynamicStrings, *(int*)(program->dynamicStrings) + 8 + 4 + v27, __FILE__, __LINE__); // "..\int\INTRPRET.C", 466
 
     v20 = program->dynamicStrings + *(int*)(program->dynamicStrings) + 4;
     if ((*(short*)v20 & 0xFFFF) != 0x8000) {
@@ -749,12 +631,12 @@ int interpretAddString(Program* program, char* string)
     return v20 + 4 - (program->dynamicStrings + 4);
 }
 
-// 0x467C90
+// 0x45BDB4
 static void op_noop(Program* program)
 {
 }
 
-// 0x467C94
+// 0x45BDB8
 static void op_const(Program* program)
 {
     int pos = program->instructionPointer;
@@ -769,28 +651,23 @@ static void op_const(Program* program)
 // - Saves current frame pointer in return stack.
 // - Sets frame pointer to the stack pointer minus number of arguments.
 //
-// 0x467CD0
+// 0x45BE00
 static void op_push_base(Program* program)
 {
-    opcode_t opcode = popShortStack(program->stack, &(program->stackPointer));
-    int value = popLongStack(program->stack, &(program->stackPointer));
+    opcode_t opcode = interpretPopShort(program);
+    int value = interpretPopLong(program);
 
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, value);
-    }
-
-    pushLongStack(program->returnStack, &(program->returnStackPointer), program->framePointer);
+    rPushLong(program, program->framePointer);
     rPushShort(program, VALUE_TYPE_INT);
 
     program->framePointer = program->stackPointer - 6 * value;
 }
 
-// pop_base
-// 0x467D3C
+// 0x45BE5C
 static void op_pop_base(Program* program)
 {
     opcode_t opcode = rPopShort(program);
-    int data = popLongStack(program->returnStack, &(program->returnStackPointer));
+    int data = rPopLong(program);
 
     if (opcode != VALUE_TYPE_INT) {
         char err[260];
@@ -801,34 +678,26 @@ static void op_pop_base(Program* program)
     program->framePointer = data;
 }
 
-// 0x467D94
+// 0x45BEBC
 static void op_pop_to_base(Program* program)
 {
     while (program->stackPointer != program->framePointer) {
-        opcode_t opcode = popShortStack(program->stack, &(program->stackPointer));
-        int data = popLongStack(program->stack, &(program->stackPointer));
-
-        if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode, data);
-        }
+        interpretPopShort(program);
+        interpretPopLong(program);
     }
 }
 
-// 0x467DE0
+// 0x45BEEC
 static void op_set_global(Program* program)
 {
     program->basePointer = program->stackPointer;
 }
 
-// 0x467DEC
+// 0x45BEF8
 static void op_dump(Program* program)
 {
-    opcode_t opcode = popShortStack(program->stack, &(program->stackPointer));
-    int data = popLongStack(program->stack, &(program->stackPointer));
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
+    opcode_t opcode = interpretPopShort(program);
+    int data = interpretPopLong(program);
 
     if (opcode != VALUE_TYPE_INT) {
         char err[256];
@@ -838,28 +707,20 @@ static void op_dump(Program* program)
 
     // NOTE: Original code is slightly different - it goes backwards to -1.
     for (int index = 0; index < data; index++) {
-        opcode = popShortStack(program->stack, &(program->stackPointer));
-        data = popLongStack(program->stack, &(program->stackPointer));
-
-        if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode, data);
-        }
+        opcode = interpretPopShort(program);
+        data = interpretPopLong(program);
     }
 }
 
-// 0x467EA4
+// 0x45BF78
 static void op_call_at(Program* program)
 {
     opcode_t opcode[2];
     int data[2];
 
     for (int arg = 0; arg < 2; arg++) {
-        opcode[arg] = popShortStack(program->stack, &(program->stackPointer));
-        data[arg] = popLongStack(program->stack, &(program->stackPointer));
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
+        opcode[arg] = interpretPopShort(program);
+        data[arg] = interpretPopLong(program);
 
         if (arg == 0) {
             if ((opcode[arg] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
@@ -874,31 +735,22 @@ static void op_call_at(Program* program)
 
     unsigned char* procedure_ptr = program->procedures + 4 + sizeof(Procedure) * data[0];
 
-    int delay = 1000 * data[1];
-
-    if (!suspendEvents) {
-        delay += 1000 * timerFunc() / timerTick;
-    }
-
+    int delay = 1000 * data[1] + 1000 * timerFunc() / timerTick;
     int flags = fetchLong(procedure_ptr, 4);
 
     storeLong(delay, procedure_ptr, 8);
     storeLong(flags | PROCEDURE_FLAG_TIMED, procedure_ptr, 4);
 }
 
-// 0x468034
+// 0x45C0DC
 static void op_call_condition(Program* program)
 {
     opcode_t opcode[2];
     int data[2];
 
     for (int arg = 0; arg < 2; arg++) {
-        opcode[arg] = popShortStack(program->stack, &(program->stackPointer));
-        data[arg] = popLongStack(program->stack, &(program->stackPointer));
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
+        opcode[arg] = interpretPopShort(program);
+        data[arg] = interpretPopLong(program);
     }
 
     if ((opcode[0] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
@@ -916,15 +768,11 @@ static void op_call_condition(Program* program)
     storeLong(data[1], procedure_ptr, 12);
 }
 
-// 0x46817C
+// 0x45C210
 static void op_wait(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid type given to wait\n");
@@ -936,15 +784,11 @@ static void op_wait(Program* program)
     program->flags |= PROGRAM_IS_WAITING;
 }
 
-// 0x468218
+// 0x45C294
 static void op_cancel(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("invalid type given to cancel");
@@ -960,7 +804,7 @@ static void op_cancel(Program* program)
     proc->field_C = 0;
 }
 
-// 0x468330
+// 0x45C3B4
 static void op_cancelall(Program* program)
 {
     int procedureCount = fetchLong(program->procedures, 0);
@@ -975,55 +819,38 @@ static void op_cancelall(Program* program)
     }
 }
 
-// 0x468400
+// 0x45C4A0
 static void op_if(Program* program)
 {
-    opcode_t opcode = popShortStack(program->stack, &(program->stackPointer));
-    int data = popLongStack(program->stack, &(program->stackPointer));
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
+    opcode_t opcode = interpretPopShort(program);
+    int data = interpretPopLong(program);
 
     if (data) {
-        opcode = popShortStack(program->stack, &(program->stackPointer));
-        data = popLongStack(program->stack, &(program->stackPointer));
-        if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode, data);
-        }
+        opcode = interpretPopShort(program);
+        data = interpretPopLong(program);
     } else {
-        opcode = popShortStack(program->stack, &(program->stackPointer));
-        data = popLongStack(program->stack, &(program->stackPointer));
-        if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode, data);
-        }
+        opcode = interpretPopShort(program);
+        data = interpretPopLong(program);
 
         program->instructionPointer = data;
     }
 }
 
-// 0x4684A4
+// 0x45C4F4
 static void op_while(Program* program)
 {
-    opcode_t opcode = popShortStack(program->stack, &(program->stackPointer));
-    int data = popLongStack(program->stack, &(program->stackPointer));
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
+    opcode_t opcode = interpretPopShort(program);
+    int data = interpretPopLong(program);
 
     if (data == 0) {
-        opcode = popShortStack(program->stack, &(program->stackPointer));
-        data = popLongStack(program->stack, &(program->stackPointer));
-
-        if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode, data);
-        }
+        opcode = interpretPopShort(program);
+        data = interpretPopLong(program);
 
         program->instructionPointer = data;
     }
 }
 
-// 0x468518
+// 0x45C530
 static void op_store(Program* program)
 {
     opcode_t opcode[2];
@@ -1031,61 +858,34 @@ static void op_store(Program* program)
 
     // NOTE: Original code does not use loop.
     for (int arg = 0; arg < 2; arg++) {
-        opcode[arg] = popShortStack(program->stack, &(program->stackPointer));
-        data[arg] = popLongStack(program->stack, &(program->stackPointer));
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
+        opcode[arg] = interpretPopShort(program);
+        data[arg] = interpretPopLong(program);
     }
 
     int var_address = program->framePointer + 6 * data[0];
-
-    // NOTE: original code is different, does not use reading functions
-    opcode_t var_type = fetchWord(program->stack, var_address + 4);
-    int var_value = fetchLong(program->stack, var_address);
-
-    if (var_type == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, var_type, var_value);
-    }
-
-    // TODO: Original code is different, check.
     storeLong(data[1], program->stack, var_address);
-
     storeWord(opcode[1], program->stack, var_address + 4);
-
-    if (opcode[1] == VALUE_TYPE_DYNAMIC_STRING) {
-        // NOTE: Uninline.
-        _interpretIncStringRef(program, VALUE_TYPE_DYNAMIC_STRING, data[1]);
-    }
 }
 
-// fetch
-// 0x468678
+// 0x45C5D0
 static void op_fetch(Program* program)
 {
     char err[256];
 
-    opcode_t opcode = popShortStack(program->stack, &(program->stackPointer));
-    int data = popLongStack(program->stack, &(program->stackPointer));
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
+    opcode_t opcode = interpretPopShort(program);
+    int data = interpretPopLong(program);
 
     if (opcode != VALUE_TYPE_INT) {
         sprintf(err, "Invalid type given to fetch, %x", opcode);
         interpretError(err);
     }
 
-    // NOTE: original code is a bit different
     int variableAddress = program->framePointer + 6 * data;
-    int variableType = fetchWord(program->stack, variableAddress + 4);
-    int variableValue = fetchLong(program->stack, variableAddress);
-    interpretPushLong(program, variableValue);
-    interpretPushShort(program, variableType);
+    interpretPushLong(program, fetchLong(program->stack, variableAddress));
+    interpretPushShort(program, fetchWord(program->stack, variableAddress + 4));
 }
 
-// 0x46873C
+// 0x45C69C
 static void op_not_equal(Program* program)
 {
     opcode_t opcode[2];
@@ -1097,12 +897,8 @@ static void op_not_equal(Program* program)
 
     // NOTE: Original code does not use loop.
     for (int arg = 0; arg < 2; arg++) {
-        opcode[arg] = popShortStack(program->stack, &(program->stackPointer));
-        data[arg] = popLongStack(program->stack, &(program->stackPointer));
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
+        opcode[arg] = interpretPopShort(program);
+        data[arg] = interpretPopLong(program);
     }
 
     switch (opcode[1]) {
@@ -1171,11 +967,11 @@ static void op_not_equal(Program* program)
         assert(false && "Should be unreachable");
     }
 
-    pushLongStack(program->stack, &(program->stackPointer), res);
+    interpretPushLong(program, res);
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x468AA8
+// 0x45C9DC
 static void op_equal(Program* program)
 {
     int arg;
@@ -1187,12 +983,8 @@ static void op_equal(Program* program)
     int res;
 
     for (arg = 0; arg < 2; arg++) {
-        type[arg] = popShortStack(program->stack, &(program->stackPointer));
-        value[arg] = popLongStack(program->stack, &(program->stackPointer));
-
-        if (type[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, type[arg], value[arg]);
-        }
+        type[arg] = interpretPopShort(program);
+        value[arg] = interpretPopLong(program);
     }
 
     switch (type[1]) {
@@ -1261,11 +1053,11 @@ static void op_equal(Program* program)
         assert(false && "Should be unreachable");
     }
 
-    pushLongStack(program->stack, &(program->stackPointer), res);
+    interpretPushLong(program, res);
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x468E14
+// 0x45CD1C
 static void op_less_equal(Program* program)
 {
     int arg;
@@ -1277,12 +1069,8 @@ static void op_less_equal(Program* program)
     int res;
 
     for (arg = 0; arg < 2; arg++) {
-        type[arg] = popShortStack(program->stack, &(program->stackPointer));
-        value[arg] = popLongStack(program->stack, &(program->stackPointer));
-
-        if (type[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, type[arg], value[arg]);
-        }
+        type[arg] = interpretPopShort(program);
+        value[arg] = interpretPopLong(program);
     }
 
     switch (type[1]) {
@@ -1351,11 +1139,11 @@ static void op_less_equal(Program* program)
         assert(false && "Should be unreachable");
     }
 
-    pushLongStack(program->stack, &(program->stackPointer), res);
+    interpretPushLong(program, res);
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x469180
+// 0x45D05C
 static void op_greater_equal(Program* program)
 {
     int arg;
@@ -1368,12 +1156,8 @@ static void op_greater_equal(Program* program)
 
     // NOTE: original code does not use loop
     for (arg = 0; arg < 2; arg++) {
-        type[arg] = popShortStack(program->stack, &(program->stackPointer));
-        value[arg] = popLongStack(program->stack, &(program->stackPointer));
-
-        if (type[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, type[arg], value[arg]);
-        }
+        type[arg] = interpretPopShort(program);
+        value[arg] = interpretPopLong(program);
     }
 
     switch (type[1]) {
@@ -1442,11 +1226,11 @@ static void op_greater_equal(Program* program)
         assert(false && "Should be unreachable");
     }
 
-    pushLongStack(program->stack, &(program->stackPointer), res);
+    interpretPushLong(program, res);
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x4694EC
+// 0x45D39C
 static void op_less(Program* program)
 {
     opcode_t opcodes[2];
@@ -1457,12 +1241,8 @@ static void op_less(Program* program)
     int res;
 
     for (int arg = 0; arg < 2; arg++) {
-        opcodes[arg] = popShortStack(program->stack, &(program->stackPointer));
-        values[arg] = popLongStack(program->stack, &(program->stackPointer));
-
-        if (opcodes[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcodes[arg], values[arg]);
-        }
+        opcodes[arg] = interpretPopShort(program);
+        values[arg] = interpretPopLong(program);
     }
 
     switch (opcodes[1]) {
@@ -1531,11 +1311,11 @@ static void op_less(Program* program)
         assert(false && "Should be unreachable");
     }
 
-    pushLongStack(program->stack, &(program->stackPointer), res);
+    interpretPushLong(program, res);
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x469858
+// 0x45D6DC
 static void op_greater(Program* program)
 {
     int arg;
@@ -1547,12 +1327,8 @@ static void op_greater(Program* program)
     int res;
 
     for (arg = 0; arg < 2; arg++) {
-        type[arg] = popShortStack(program->stack, &(program->stackPointer));
-        value[arg] = popLongStack(program->stack, &(program->stackPointer));
-
-        if (type[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, type[arg], value[arg]);
-        }
+        type[arg] = interpretPopShort(program);
+        value[arg] = interpretPopLong(program);
     }
 
     switch (type[1]) {
@@ -1621,11 +1397,11 @@ static void op_greater(Program* program)
         assert(false && "Should be unreachable");
     }
 
-    pushLongStack(program->stack, &(program->stackPointer), res);
+    interpretPushLong(program, res);
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x469BC4
+// 0x45DA1C
 static void op_add(Program* program)
 {
     // TODO: Check everything, too many conditions, variables and allocations.
@@ -1638,12 +1414,8 @@ static void op_add(Program* program)
 
     // NOTE: original code does not use loop
     for (int arg = 0; arg < 2; arg++) {
-        opcodes[arg] = popShortStack(program->stack, &(program->stackPointer));
-        values[arg] = popLongStack(program->stack, &(program->stackPointer));
-
-        if (opcodes[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcodes[arg], values[arg]);
-        }
+        opcodes[arg] = interpretPopShort(program);
+        values[arg] = interpretPopLong(program);
     }
 
     switch (opcodes[1]) {
@@ -1655,51 +1427,51 @@ static void op_add(Program* program)
         case VALUE_TYPE_STRING:
         case VALUE_TYPE_DYNAMIC_STRING:
             t = interpretGetString(program, opcodes[0], values[0]);
-            str_ptr[0] = (char*)mymalloc(strlen(t) + 1, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 1002
+            str_ptr[0] = (char*)mymalloc(strlen(t) + 1, __FILE__, __LINE__); // "..\int\INTRPRET.C", 802
             strcpy(str_ptr[0], t);
             break;
         case VALUE_TYPE_FLOAT:
-            str_ptr[0] = (char*)mymalloc(80, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 1011
+            str_ptr[0] = (char*)mymalloc(80, __FILE__, __LINE__); // "..\int\INTRPRET.C", 811
             sprintf(str_ptr[0], "%.5f", floats[0]);
             break;
         case VALUE_TYPE_INT:
-            str_ptr[0] = (char*)mymalloc(80, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 1007
+            str_ptr[0] = (char*)mymalloc(80, __FILE__, __LINE__); // "..\int\INTRPRET.C", 807
             sprintf(str_ptr[0], "%d", values[0]);
             break;
         }
 
-        t = (char*)mymalloc(strlen(str_ptr[1]) + strlen(str_ptr[0]) + 1, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 1015
+        t = (char*)mymalloc(strlen(str_ptr[1]) + strlen(str_ptr[0]) + 1, __FILE__, __LINE__); // "..\int\INTRPRET.C", 815
         strcpy(t, str_ptr[1]);
         strcat(t, str_ptr[0]);
 
-        pushLongStack(program->stack, &(program->stackPointer), interpretAddString(program, t));
+        interpretPushLong(program, interpretAddString(program, t));
         interpretPushShort(program, VALUE_TYPE_DYNAMIC_STRING);
 
-        myfree(str_ptr[0], __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 1019
-        myfree(t, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 1020
+        myfree(str_ptr[0], __FILE__, __LINE__); // "..\int\INTRPRET.C", 819
+        myfree(t, __FILE__, __LINE__); // "..\int\INTRPRET.C", 820
         break;
     case VALUE_TYPE_FLOAT:
         switch (opcodes[0]) {
         case VALUE_TYPE_STRING:
         case VALUE_TYPE_DYNAMIC_STRING:
             str_ptr[0] = interpretGetString(program, opcodes[0], values[0]);
-            t = (char*)mymalloc(strlen(str_ptr[0]) + 80, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 1039
+            t = (char*)mymalloc(strlen(str_ptr[0]) + 80, __FILE__, __LINE__); // "..\int\INTRPRET.C", 839
             sprintf(t, "%.5f", floats[1]);
             strcat(t, str_ptr[0]);
 
-            pushLongStack(program->stack, &(program->stackPointer), interpretAddString(program, t));
+            interpretPushLong(program, interpretAddString(program, t));
             interpretPushShort(program, VALUE_TYPE_DYNAMIC_STRING);
 
-            myfree(t, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 1044
+            myfree(t, __FILE__, __LINE__); // "..\int\INTRPRET.C", 844
             break;
         case VALUE_TYPE_FLOAT:
             resf = floats[1] + floats[0];
-            pushLongStack(program->stack, &(program->stackPointer), *(int*)&resf);
+            interpretPushLong(program, *(int*)&resf);
             interpretPushShort(program, VALUE_TYPE_FLOAT);
             break;
         case VALUE_TYPE_INT:
             resf = floats[1] + (float)values[0];
-            pushLongStack(program->stack, &(program->stackPointer), *(int*)&resf);
+            interpretPushLong(program, *(int*)&resf);
             interpretPushShort(program, VALUE_TYPE_FLOAT);
             break;
         }
@@ -1709,28 +1481,28 @@ static void op_add(Program* program)
         case VALUE_TYPE_STRING:
         case VALUE_TYPE_DYNAMIC_STRING:
             str_ptr[0] = interpretGetString(program, opcodes[0], values[0]);
-            t = (char*)mymalloc(strlen(str_ptr[0]) + 80, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 1070
+            t = (char*)mymalloc(strlen(str_ptr[0]) + 80, __FILE__, __LINE__); // "..\int\INTRPRET.C", 870
             sprintf(t, "%d", values[1]);
             strcat(t, str_ptr[0]);
 
-            pushLongStack(program->stack, &(program->stackPointer), interpretAddString(program, t));
+            interpretPushLong(program, interpretAddString(program, t));
             interpretPushShort(program, VALUE_TYPE_DYNAMIC_STRING);
 
-            myfree(t, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 1075
+            myfree(t, __FILE__, __LINE__); // "..\int\INTRPRET.C", 875
             break;
         case VALUE_TYPE_FLOAT:
             resf = (float)values[1] + floats[0];
-            pushLongStack(program->stack, &(program->stackPointer), *(int*)&resf);
+            interpretPushLong(program, *(int*)&resf);
             interpretPushShort(program, VALUE_TYPE_FLOAT);
             break;
         case VALUE_TYPE_INT:
             if ((values[0] <= 0 || (INT_MAX - values[0]) > values[1])
                 && (values[0] >= 0 || (INT_MIN - values[0]) <= values[1])) {
-                pushLongStack(program->stack, &(program->stackPointer), values[1] + values[0]);
+                interpretPushLong(program, values[1] + values[0]);
                 interpretPushShort(program, VALUE_TYPE_INT);
             } else {
                 resf = (float)values[1] + (float)values[0];
-                pushLongStack(program->stack, &(program->stackPointer), *(int*)&resf);
+                interpretPushLong(program, *(int*)&resf);
                 interpretPushShort(program, VALUE_TYPE_FLOAT);
             }
             break;
@@ -1739,7 +1511,7 @@ static void op_add(Program* program)
     }
 }
 
-// 0x46A1D8
+// 0x45DFB0
 static void op_sub(Program* program)
 {
     opcode_t type[2];
@@ -1748,12 +1520,8 @@ static void op_sub(Program* program)
     float resf;
 
     for (int arg = 0; arg < 2; arg++) {
-        type[arg] = popShortStack(program->stack, &(program->stackPointer));
-        value[arg] = popLongStack(program->stack, &(program->stackPointer));
-
-        if (type[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, type[arg], value[arg]);
-        }
+        type[arg] = interpretPopShort(program);
+        value[arg] = interpretPopLong(program);
     }
 
     switch (type[1]) {
@@ -1767,7 +1535,7 @@ static void op_sub(Program* program)
             break;
         }
 
-        pushLongStack(program->stack, &(program->stackPointer), *(int*)&resf);
+        interpretPushLong(program, *(int*)&resf);
         interpretPushShort(program, VALUE_TYPE_FLOAT);
         break;
     case VALUE_TYPE_INT:
@@ -1775,11 +1543,11 @@ static void op_sub(Program* program)
         case VALUE_TYPE_FLOAT:
             resf = value[1] - floats[0];
 
-            pushLongStack(program->stack, &(program->stackPointer), *(int*)&resf);
+            interpretPushLong(program, *(int*)&resf);
             interpretPushShort(program, VALUE_TYPE_FLOAT);
             break;
         default:
-            pushLongStack(program->stack, &(program->stackPointer), value[1] - value[0]);
+            interpretPushLong(program, value[1] - value[0]);
             interpretPushShort(program, VALUE_TYPE_INT);
             break;
         }
@@ -1787,7 +1555,7 @@ static void op_sub(Program* program)
     }
 }
 
-// 0x46A300
+// 0x45E09C
 static void op_mul(Program* program)
 {
     int arg;
@@ -1797,12 +1565,8 @@ static void op_mul(Program* program)
     float resf;
 
     for (arg = 0; arg < 2; arg++) {
-        type[arg] = popShortStack(program->stack, &(program->stackPointer));
-        value[arg] = popLongStack(program->stack, &(program->stackPointer));
-
-        if (type[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, type[arg], value[arg]);
-        }
+        type[arg] = interpretPopShort(program);
+        value[arg] = interpretPopLong(program);
     }
 
     switch (type[1]) {
@@ -1816,7 +1580,7 @@ static void op_mul(Program* program)
             break;
         }
 
-        pushLongStack(program->stack, &(program->stackPointer), *(int*)&resf);
+        interpretPushLong(program, *(int*)&resf);
         interpretPushShort(program, VALUE_TYPE_FLOAT);
         break;
     case VALUE_TYPE_INT:
@@ -1824,11 +1588,11 @@ static void op_mul(Program* program)
         case VALUE_TYPE_FLOAT:
             resf = value[1] * floats[0];
 
-            pushLongStack(program->stack, &(program->stackPointer), *(int*)&resf);
+            interpretPushLong(program, *(int*)&resf);
             interpretPushShort(program, VALUE_TYPE_FLOAT);
             break;
         default:
-            pushLongStack(program->stack, &(program->stackPointer), value[0] * value[1]);
+            interpretPushLong(program, value[0] * value[1]);
             interpretPushShort(program, VALUE_TYPE_INT);
             break;
         }
@@ -1836,7 +1600,7 @@ static void op_mul(Program* program)
     }
 }
 
-// 0x46A424
+// 0x45E188
 static void op_div(Program* program)
 {
     // TODO: Check entire function, probably errors due to casts.
@@ -1846,19 +1610,11 @@ static void op_div(Program* program)
     float divisor;
     float result;
 
-    type[0] = popShortStack(program->stack, &(program->stackPointer));
-    value[0] = popLongStack(program->stack, &(program->stackPointer));
+    type[0] = interpretPopShort(program);
+    value[0] = interpretPopLong(program);
 
-    if (type[0] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type[0], value[0]);
-    }
-
-    type[1] = popShortStack(program->stack, &(program->stackPointer));
-    value[1] = popLongStack(program->stack, &(program->stackPointer));
-
-    if (type[1] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type[1], value[1]);
-    }
+    type[1] = interpretPopShort(program);
+    value[1] = interpretPopLong(program);
 
     switch (type[1]) {
     case VALUE_TYPE_FLOAT:
@@ -1876,7 +1632,7 @@ static void op_div(Program* program)
         }
 
         result = float_value[1] / divisor;
-        pushLongStack(program->stack, &(program->stackPointer), *(int*)&result);
+        interpretPushLong(program, *(int*)&result);
         interpretPushShort(program, VALUE_TYPE_FLOAT);
         break;
     case VALUE_TYPE_INT:
@@ -1889,39 +1645,31 @@ static void op_div(Program* program)
             }
 
             result = (float)value[1] / divisor;
-            pushLongStack(program->stack, &(program->stackPointer), *(int*)&result);
+            interpretPushLong(program, *(int*)&result);
             interpretPushShort(program, VALUE_TYPE_FLOAT);
         } else {
             if (value[0] == 0) {
                 interpretError("Division (DIV) by zero");
             }
 
-            pushLongStack(program->stack, &(program->stackPointer), value[1] / value[0]);
+            interpretPushLong(program, value[1] / value[0]);
             interpretPushShort(program, VALUE_TYPE_INT);
         }
         break;
     }
 }
 
-// 0x46A5B8
+// 0x45E2EC
 static void op_mod(Program* program)
 {
     opcode_t type[2];
     int value[2];
 
-    type[0] = popShortStack(program->stack, &(program->stackPointer));
-    value[0] = popLongStack(program->stack, &(program->stackPointer));
+    type[0] = interpretPopShort(program);
+    value[0] = interpretPopLong(program);
 
-    if (type[0] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type[0], value[0]);
-    }
-
-    type[1] = popShortStack(program->stack, &(program->stackPointer));
-    value[1] = popLongStack(program->stack, &(program->stackPointer));
-
-    if (type[1] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type[1], value[1]);
-    }
+    type[1] = interpretPopShort(program);
+    value[1] = interpretPopLong(program);
 
     if (type[1] == VALUE_TYPE_FLOAT) {
         interpretError("Trying to MOD a float");
@@ -1939,30 +1687,22 @@ static void op_mod(Program* program)
         interpretError("Division (MOD) by zero");
     }
 
-    pushLongStack(program->stack, &(program->stackPointer), value[1] % value[0]);
+    interpretPushLong(program, value[1] % value[0]);
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x46A6B4
+// 0x45E3B8
 static void op_and(Program* program)
 {
     opcode_t type[2];
     int value[2];
     int result;
 
-    type[0] = popShortStack(program->stack, &(program->stackPointer));
-    value[0] = popLongStack(program->stack, &(program->stackPointer));
+    type[0] = interpretPopShort(program);
+    value[0] = interpretPopLong(program);
 
-    if (type[0] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type[0], value[0]);
-    }
-
-    type[1] = popShortStack(program->stack, &(program->stackPointer));
-    value[1] = popLongStack(program->stack, &(program->stackPointer));
-
-    if (type[1] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type[1], value[1]);
-    }
+    type[1] = interpretPopShort(program);
+    value[1] = interpretPopLong(program);
 
     switch (type[1]) {
     case VALUE_TYPE_STRING:
@@ -2018,30 +1758,22 @@ static void op_and(Program* program)
         assert(false && "Should be unreachable");
     }
 
-    pushLongStack(program->stack, &(program->stackPointer), result);
+    interpretPushLong(program, result);
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x46A8D8
+// 0x45E5A0
 static void op_or(Program* program)
 {
     opcode_t type[2];
     int value[2];
     int result;
 
-    type[0] = popShortStack(program->stack, &(program->stackPointer));
-    value[0] = popLongStack(program->stack, &(program->stackPointer));
+    type[0] = interpretPopShort(program);
+    value[0] = interpretPopLong(program);
 
-    if (type[0] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type[0], value[0]);
-    }
-
-    type[1] = popShortStack(program->stack, &(program->stackPointer));
-    value[1] = popLongStack(program->stack, &(program->stackPointer));
-
-    if (type[1] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type[1], value[1]);
-    }
+    type[1] = interpretPopShort(program);
+    value[1] = interpretPopLong(program);
 
     switch (type[1]) {
     case VALUE_TYPE_STRING:
@@ -2093,11 +1825,11 @@ static void op_or(Program* program)
         assert(false && "Should be unreachable");
     }
 
-    pushLongStack(program->stack, &(program->stackPointer), result);
+    interpretPushLong(program, result);
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x46AACC
+// 0x45E764
 static void op_not(Program* program)
 {
     opcode_t type;
@@ -2106,31 +1838,24 @@ static void op_not(Program* program)
     type = interpretPopShort(program);
     value = interpretPopLong(program);
 
-    if (type == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type, value);
-    }
-
     interpretPushLong(program, value == 0);
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x46AB2C
+// 0x45E7B0
 static void op_negate(Program* program)
 {
     opcode_t type;
     int value;
 
-    type = popShortStack(program->stack, &(program->stackPointer));
-    value = popLongStack(program->stack, &(program->stackPointer));
-    if (type == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type, value);
-    }
+    type = interpretPopShort(program);
+    value = interpretPopLong(program);
 
-    pushLongStack(program->stack, &(program->stackPointer), -value);
+    interpretPushLong(program, -value);
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x46AB84
+// 0x45E7F0
 static void op_bwnot(Program* program)
 {
     opcode_t type;
@@ -2139,24 +1864,15 @@ static void op_bwnot(Program* program)
     type = interpretPopShort(program);
     value = interpretPopLong(program);
 
-    if (type == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type, value);
-    }
-
     interpretPushLong(program, ~value);
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// floor
-// 0x46ABDC
+// 0x45E830
 static void op_floor(Program* program)
 {
-    opcode_t type = popShortStack(program->stack, &(program->stackPointer));
-    int data = popLongStack(program->stack, &(program->stackPointer));
-
-    if (type == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type, data);
-    }
+    opcode_t type = interpretPopShort(program);
+    int data = interpretPopLong(program);
 
     if (type == VALUE_TYPE_STRING) {
         interpretError("Invalid arg given to floor()");
@@ -2165,30 +1881,22 @@ static void op_floor(Program* program)
         data = (int)(*((float*)&data));
     }
 
-    pushLongStack(program->stack, &(program->stackPointer), data);
+    interpretPushLong(program, data);
     interpretPushShort(program, type);
 }
 
-// 0x46AC78
+// 0x45E8BC
 static void op_bwand(Program* program)
 {
     opcode_t type[2];
     int value[2];
     int result;
 
-    type[0] = popShortStack(program->stack, &(program->stackPointer));
-    value[0] = popLongStack(program->stack, &(program->stackPointer));
+    type[0] = interpretPopShort(program);
+    value[0] = interpretPopLong(program);
 
-    if (type[0] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type[0], value[0]);
-    }
-
-    type[1] = popShortStack(program->stack, &(program->stackPointer));
-    value[1] = popLongStack(program->stack, &(program->stackPointer));
-
-    if (type[1] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type[1], value[1]);
-    }
+    type[1] = interpretPopShort(program);
+    value[1] = interpretPopLong(program);
 
     switch (type[1]) {
     case VALUE_TYPE_FLOAT:
@@ -2215,30 +1923,22 @@ static void op_bwand(Program* program)
         return;
     }
 
-    pushLongStack(program->stack, &(program->stackPointer), result);
+    interpretPushLong(program, result);
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x46ADA4
+// 0x45E9A4
 static void op_bwor(Program* program)
 {
     opcode_t type[2];
     int value[2];
     int result;
 
-    type[0] = popShortStack(program->stack, &(program->stackPointer));
-    value[0] = popLongStack(program->stack, &(program->stackPointer));
+    type[0] = interpretPopShort(program);
+    value[0] = interpretPopLong(program);
 
-    if (type[0] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type[0], value[0]);
-    }
-
-    type[1] = popShortStack(program->stack, &(program->stackPointer));
-    value[1] = popLongStack(program->stack, &(program->stackPointer));
-
-    if (type[1] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type[1], value[1]);
-    }
+    type[1] = interpretPopShort(program);
+    value[1] = interpretPopLong(program);
 
     switch (type[1]) {
     case VALUE_TYPE_FLOAT:
@@ -2265,30 +1965,22 @@ static void op_bwor(Program* program)
         return;
     }
 
-    pushLongStack(program->stack, &(program->stackPointer), result);
+    interpretPushLong(program, result);
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x46AED0
+// 0x45EA8C
 static void op_bwxor(Program* program)
 {
     opcode_t type[2];
     int value[2];
     int result;
 
-    type[0] = popShortStack(program->stack, &(program->stackPointer));
-    value[0] = popLongStack(program->stack, &(program->stackPointer));
+    type[0] = interpretPopShort(program);
+    value[0] = interpretPopLong(program);
 
-    if (type[0] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type[0], value[0]);
-    }
-
-    type[1] = popShortStack(program->stack, &(program->stackPointer));
-    value[1] = popLongStack(program->stack, &(program->stackPointer));
-
-    if (type[1] == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type[1], value[1]);
-    }
+    type[1] = interpretPopShort(program);
+    value[1] = interpretPopLong(program);
 
     switch (type[1]) {
     case VALUE_TYPE_FLOAT:
@@ -2315,11 +2007,11 @@ static void op_bwxor(Program* program)
         return;
     }
 
-    pushLongStack(program->stack, &(program->stackPointer), result);
+    interpretPushLong(program, result);
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x46AFFC
+// 0x45EB74
 static void op_swapa(Program* program)
 {
     opcode_t v1;
@@ -2328,44 +2020,39 @@ static void op_swapa(Program* program)
     int v10;
 
     v1 = rPopShort(program);
-    v5 = popLongStack(program->returnStack, &(program->returnStackPointer));
+    v5 = rPopLong(program);
 
     a2 = rPopShort(program);
-    v10 = popLongStack(program->returnStack, &(program->returnStackPointer));
+    v10 = rPopLong(program);
 
-    pushLongStack(program->returnStack, &(program->returnStackPointer), v5);
+    rPushLong(program, v5);
     rPushShort(program, v1);
 
-    pushLongStack(program->returnStack, &(program->returnStackPointer), v10);
+    rPushLong(program, v10);
     rPushShort(program, a2);
 }
 
-// 0x46B070
+// 0x45EBF4
 static void op_critical_done(Program* program)
 {
     program->flags &= ~PROGRAM_FLAG_CRITICAL_SECTION;
 }
 
-// 0x46B078
+// 0x45EBFC
 static void op_critical_start(Program* program)
 {
     program->flags |= PROGRAM_FLAG_CRITICAL_SECTION;
 }
 
-// 0x46B080
+// 0x45EC04
 static void op_jmp(Program* program)
 {
     opcode_t type;
     int value;
     char err[260];
 
-    type = popShortStack(program->stack, &(program->stackPointer));
-    value = popLongStack(program->stack, &(program->stackPointer));
-
-    // NOTE: comparing shorts (0x46B0B1)
-    if (type == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type, value);
-    }
+    type = interpretPopShort(program);
+    value = interpretPopLong(program);
 
     // NOTE: comparing ints (0x46B0D3)
     if ((type & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
@@ -2376,7 +2063,7 @@ static void op_jmp(Program* program)
     program->instructionPointer = value;
 }
 
-// 0x46B108
+// 0x45EC6C
 static void op_call(Program* program)
 {
     opcode_t type;
@@ -2392,11 +2079,8 @@ static void op_call(Program* program)
     Program tempProgram;
     char err[256];
 
-    type = popShortStack(program->stack, &(program->stackPointer));
-    data = popLongStack(program->stack, &(program->stackPointer));
-    if (type == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type, data);
-    }
+    type = interpretPopShort(program);
+    data = interpretPopLong(program);
 
     if ((type & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("Invalid address given to call");
@@ -2412,11 +2096,8 @@ static void op_call(Program* program)
             interpretError("External procedure %s not found", procedureIdentifier);
         }
 
-        type = popShortStack(program->stack, &(program->stackPointer));
-        data = popLongStack(program->stack, &(program->stackPointer));
-        if (type == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, type, data);
-        }
+        type = interpretPopShort(program);
+        data = interpretPopLong(program);
 
         if ((type & VALUE_TYPE_MASK) != VALUE_TYPE_INT || data != externalProcedureArgumentCount) {
             sprintf(err, "Wrong number of arguments to external procedure %s.Expecting %d, got %d.", procedureIdentifier, externalProcedureArgumentCount, data);
@@ -2454,9 +2135,7 @@ static void op_call(Program* program)
         while (data-- != 0) {
             argumentType = interpretPopShort(program);
             argumentValue = interpretPopLong(program);
-            if (argumentType == VALUE_TYPE_DYNAMIC_STRING) {
-                interpretDecStringRef(program, argumentType, argumentValue);
-            }
+
             interpretPushLong(&tempProgram, argumentValue);
             interpretPushShort(&tempProgram, argumentType);
         }
@@ -2464,9 +2143,7 @@ static void op_call(Program* program)
         while (data++ < externalProcedureArgumentCount) {
             argumentType = interpretPopShort(&tempProgram);
             argumentValue = interpretPopLong(&tempProgram);
-            if (argumentType == VALUE_TYPE_DYNAMIC_STRING) {
-                interpretDecStringRef(&tempProgram, argumentType, argumentValue);
-            }
+
             interpretPushLong(externalProgram, argumentValue);
             interpretPushShort(externalProgram, argumentType);
         }
@@ -2491,19 +2168,15 @@ static void op_call(Program* program)
     }
 }
 
-// 0x46B590
+// 0x45F124
 static void op_pop_flags(Program* program)
 {
     opcode_t opcode[3];
     int data[3];
 
     for (int arg = 0; arg < 3; arg++) {
-        opcode[arg] = popShortStack(program->stack, &(program->stackPointer));
-        data[arg] = popLongStack(program->stack, &(program->stackPointer));
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
+        opcode[arg] = interpretPopShort(program);
+        data[arg] = interpretPopLong(program);
     }
 
     program->windowId = data[0];
@@ -2512,40 +2185,37 @@ static void op_pop_flags(Program* program)
 }
 
 // pop stack 2 -> set program address
-// 0x46B63C
+// 0x45F17C
 static void op_pop_return(Program* program)
 {
     rPopShort(program);
-    program->instructionPointer = popLongStack(program->returnStack, &(program->returnStackPointer));
+    program->instructionPointer = rPopLong(program);
 }
 
-// 0x46B658
+// 0x45F1A0
 static void op_pop_exit(Program* program)
 {
     rPopShort(program);
-    program->instructionPointer = popLongStack(program->returnStack, &(program->returnStackPointer));
+    program->instructionPointer = rPopLong(program);
 
     program->flags |= PROGRAM_FLAG_0x40;
 }
 
-// 0x46B67C
+// 0x45F1CC
 static void op_pop_flags_return(Program* program)
 {
     op_pop_flags(program);
-    rPopShort(program);
-    program->instructionPointer = rPopLong(program);
+    op_pop_return(program);
 }
 
-// 0x46B698
+// 0x45F1E8
 static void op_pop_flags_exit(Program* program)
 {
     op_pop_flags(program);
-    rPopShort(program);
-    program->instructionPointer = rPopLong(program);
-    program->flags |= PROGRAM_FLAG_0x40;
+    op_pop_exit(program);
 }
 
-// 0x46B6BC
+// 0x45F20C
 static void op_pop_flags_return_val_exit(Program* program)
 {
     opcode_t type;
@@ -2554,52 +2224,41 @@ static void op_pop_flags_return_val_exit(Program* program)
     type = interpretPopShort(program);
     value = interpretPopLong(program);
 
-    if (type == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type, value);
-    }
-
     op_pop_flags(program);
-    rPopShort(program);
-    program->instructionPointer = rPopLong(program);
-    program->flags |= PROGRAM_FLAG_0x40;
+    op_pop_exit(program);
+
     interpretPushLong(program, value);
     interpretPushShort(program, type);
 }
 
-// 0x46B73C
+// 0x45F26C
 static void op_pop_flags_return_val_exit_extern(Program* program)
 {
     opcode_t type;
     int value;
     Program* v1;
 
-    type = popShortStack(program->stack, &(program->stackPointer));
-    value = popLongStack(program->stack, &(program->stackPointer));
-
-    if (type == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type, value);
-    }
+    type = interpretPopShort(program);
+    value = interpretPopLong(program);
 
     op_pop_flags(program);
 
     rPopShort(program);
-    v1 = (Program*)popLongStack(program->returnStack, &(program->returnStackPointer));
+    v1 = (Program*)rPopLong(program);
 
     rPopShort(program);
-    v1->checkWaitFunc = (InterpretCheckWaitFunc*)popLongStack(program->returnStack, &(program->returnStackPointer));
+    v1->checkWaitFunc = (InterpretCheckWaitFunc*)rPopLong(program);
 
     rPopShort(program);
-    v1->flags = popLongStack(program->returnStack, &(program->returnStackPointer));
+    v1->flags = rPopLong(program);
 
-    program->instructionPointer = rPopLong(program);
+    op_pop_exit(program);
 
-    program->flags |= PROGRAM_FLAG_0x40;
-
-    pushLongStack(program->stack, &(program->stackPointer), value);
+    interpretPushLong(program, value);
     interpretPushShort(program, type);
 }
 
-// 0x46B808
+// 0x45F32C
 static void op_pop_flags_return_extern(Program* program)
 {
     Program* v1;
@@ -2607,19 +2266,18 @@ static void op_pop_flags_return_extern(Program* program)
     op_pop_flags(program);
 
     rPopShort(program);
-    v1 = (Program*)popLongStack(program->returnStack, &(program->returnStackPointer));
+    v1 = (Program*)rPopLong(program);
 
     rPopShort(program);
-    v1->checkWaitFunc = (InterpretCheckWaitFunc*)popLongStack(program->returnStack, &(program->returnStackPointer));
+    v1->checkWaitFunc = (InterpretCheckWaitFunc*)rPopLong(program);
 
     rPopShort(program);
-    v1->flags = popLongStack(program->returnStack, &(program->returnStackPointer));
+    v1->flags = rPopLong(program);
 
-    rPopShort(program);
-    program->instructionPointer = rPopLong(program);
+    op_pop_return(program);
 }
 
-// 0x46B86C
+// 0x45F398
 static void op_pop_flags_exit_extern(Program* program)
 {
     Program* v1;
@@ -2627,22 +2285,19 @@ static void op_pop_flags_exit_extern(Program* program)
     op_pop_flags(program);
 
     rPopShort(program);
-    v1 = (Program*)popLongStack(program->returnStack, &(program->returnStackPointer));
+    v1 = (Program*)rPopLong(program);
 
     rPopShort(program);
-    v1->checkWaitFunc = (InterpretCheckWaitFunc*)popLongStack(program->returnStack, &(program->returnStackPointer));
+    v1->checkWaitFunc = (InterpretCheckWaitFunc*)rPopLong(program);
 
     rPopShort(program);
-    v1->flags = popLongStack(program->returnStack, &(program->returnStackPointer));
+    v1->flags = rPopLong(program);
 
-    rPopShort(program);
-    program->instructionPointer = rPopLong(program);
-
-    program->flags |= 0x40;
+    op_pop_exit(program);
 }
 
 // pop value from stack 1 and push it to script popped from stack 2
-// 0x46B8D8
+// 0x45F40C
 static void op_pop_flags_return_val_extern(Program* program)
 {
     opcode_t type;
@@ -2650,145 +2305,106 @@ static void op_pop_flags_return_val_extern(Program* program)
     Program* v10;
     char* str;
 
-    type = popShortStack(program->stack, &(program->stackPointer));
-    value = popLongStack(program->stack, &(program->stackPointer));
-
-    if (type == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type, value);
-    }
+    type = interpretPopShort(program);
+    value = interpretPopLong(program);
 
     op_pop_flags(program);
 
     rPopShort(program);
-    v10 = (Program*)popLongStack(program->returnStack, &(program->returnStackPointer));
+    v10 = (Program*)rPopLong(program);
 
     rPopShort(program);
-    v10->checkWaitFunc = (InterpretCheckWaitFunc*)popLongStack(program->returnStack, &(program->returnStackPointer));
+    v10->checkWaitFunc = (InterpretCheckWaitFunc*)rPopLong(program);
 
     rPopShort(program);
-    v10->flags = popLongStack(program->returnStack, &(program->returnStackPointer));
+    v10->flags = rPopLong(program);
 
     if ((type & VALUE_TYPE_MASK) == VALUE_TYPE_STRING) {
         str = interpretGetString(program, type, value);
-        pushLongStack(v10->stack, &(v10->stackPointer), interpretAddString(v10, str));
-        type = VALUE_TYPE_DYNAMIC_STRING;
+        interpretPushLong(v10, interpretAddString(v10, str));
+        interpretPushShort(v10, VALUE_TYPE_DYNAMIC_STRING);
     } else {
-        pushLongStack(v10->stack, &(v10->stackPointer), value);
+        interpretPushLong(v10, value);
+        interpretPushShort(v10, type);
     }
-
-    interpretPushShort(v10, type);
 
     if (v10->flags & 0x80) {
         program->flags &= ~0x80;
     }
 
-    rPopShort(program);
-    program->instructionPointer = rPopLong(program);
-
-    rPopShort(v10);
-    v10->instructionPointer = rPopLong(program);
+    op_pop_return(program);
+    op_pop_return(v10);
 }
 
-// 0x46BA10
+// 0x45F544
 static void op_pop_address(Program* program)
 {
     rPopShort(program);
     rPopLong(program);
 }
 
-// 0x46BA2C
+// 0x45F564
 static void op_a_to_d(Program* program)
 {
     opcode_t opcode = rPopShort(program);
-    int data = popLongStack(program->returnStack, &(program->returnStackPointer));
+    int data = rPopLong(program);
 
-    pushLongStack(program->stack, &(program->stackPointer), data);
+    interpretPushLong(program, data);
     interpretPushShort(program, opcode);
 }
 
-// 0x46BA68
+// 0x45F5AC
 static void op_d_to_a(Program* program)
 {
-    opcode_t opcode = popShortStack(program->stack, &(program->stackPointer));
-    int data = popLongStack(program->stack, &(program->stackPointer));
+    opcode_t opcode = interpretPopShort(program);
+    int data = interpretPopLong(program);
 
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
-
-    pushLongStack(program->returnStack, &(program->returnStackPointer), data);
+    rPushLong(program, data);
     rPushShort(program, opcode);
 }
 
-// 0x46BAC0
+// 0x45F5F4
 static void op_exit_prog(Program* program)
 {
     program->flags |= PROGRAM_FLAG_EXITED;
 }
 
-// 0x46BAC8
+// 0x45F5FC
 static void op_stop_prog(Program* program)
 {
     program->flags |= PROGRAM_FLAG_STOPPED;
 }
 
-// 0x46BAD0
+// 0x45F604
 static void op_fetch_global(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
 
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
-
-    // TODO: Check.
     int addr = program->basePointer + 6 * data;
-    int v8 = fetchLong(program->stack, addr);
-    opcode_t varType = fetchWord(program->stack, addr + 4);
 
-    interpretPushLong(program, v8);
-    // TODO: Check.
-    interpretPushShort(program, varType);
+    interpretPushLong(program, fetchLong(program->stack, addr));
+    interpretPushShort(program, fetchWord(program->stack, addr + 4));
 }
 
-// 0x46BB5C
+// 0x45F69C
 static void op_store_global(Program* program)
 {
     opcode_t type[2];
     int value[2];
 
     for (int arg = 0; arg < 2; arg++) {
-        type[arg] = popShortStack(program->stack, &(program->stackPointer));
-        value[arg] = popLongStack(program->stack, &(program->stackPointer));
-
-        if (type[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, type[arg], value[arg]);
-        }
+        type[arg] = interpretPopShort(program);
+        value[arg] = interpretPopLong(program);
     }
 
-    int var_address = program->basePointer + 6 * value[0];
+    int addr = program->basePointer + 6 * value[0];
 
-    opcode_t var_type = fetchWord(program->stack, var_address + 4);
-    int var_value = fetchLong(program->stack, var_address);
-
-    if (var_type == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, var_type, var_value);
-    }
-
-    // TODO: Check offsets.
-    storeLong(value[1], program->stack, var_address);
-
-    // TODO: Check endianness.
-    storeWord(type[1], program->stack, var_address + 4);
-
-    if (type[1] == VALUE_TYPE_DYNAMIC_STRING) {
-        // NOTE: Uninline.
-        _interpretIncStringRef(program, VALUE_TYPE_DYNAMIC_STRING, value[1]);
-    }
+    storeLong(value[1], program->stack, addr);
+    storeWord(type[1], program->stack, addr + 4);
 }
 
-// 0x46BCAC
+// 0x45F73C
 static void op_swap(Program* program)
 {
     opcode_t opcode[2];
@@ -2798,10 +2414,6 @@ static void op_swap(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     for (int arg = 0; arg < 2; arg++) {
@@ -2810,16 +2422,11 @@ static void op_swap(Program* program)
     }
 }
 
-// fetch_proc_address
-// 0x46BD60
+// 0x45F7BC
 static void op_fetch_proc_address(Program* program)
 {
-    opcode_t opcode = popShortStack(program->stack, &(program->stackPointer));
-    int data = popLongStack(program->stack, &(program->stackPointer));
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
+    opcode_t opcode = interpretPopShort(program);
+    int data = interpretPopLong(program);
 
     if (opcode != VALUE_TYPE_INT) {
         char err[256];
@@ -2830,33 +2437,25 @@ static void op_fetch_proc_address(Program* program)
     int procedureIndex = data;
 
     int address = fetchLong(program->procedures + 4 + sizeof(Procedure) * procedureIndex, 16);
-    pushLongStack(program->stack, &(program->stackPointer), address);
+    interpretPushLong(program, address);
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
 // Pops value from stack and throws it away.
 //
-// 0x46BE10
+// 0x45F874
 static void op_pop(Program* program)
 {
-    opcode_t opcode = popShortStack(program->stack, &(program->stackPointer));
-    int data = popLongStack(program->stack, &(program->stackPointer));
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
+    interpretPopShort(program);
+    interpretPopLong(program);
 }
 
-// 0x46BE4C
+// 0x45F894
 static void op_dup(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
 
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
-
     interpretPushLong(program, data);
     interpretPushShort(program, opcode);
 
@@ -2864,7 +2463,7 @@ static void op_dup(Program* program)
     interpretPushShort(program, opcode);
 }
 
-// 0x46BEC8
+// 0x45F8FC
 static void op_store_external(Program* program)
 {
     opcode_t opcode[2];
@@ -2874,10 +2473,6 @@ static void op_store_external(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     const char* identifier = interpretGetName(program, data[0]);
@@ -2889,15 +2484,11 @@ static void op_store_external(Program* program)
     }
 }
 
-// 0x46BF90
+// 0x45F990
 static void op_fetch_external(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     const char* identifier = interpretGetName(program, data);
 
@@ -2913,7 +2504,7 @@ static void op_fetch_external(Program* program)
     interpretPushShort(program, variableOpcode);
 }
 
-// 0x46C044
+// 0x45FA30
 static void op_export_proc(Program* program)
 {
     opcode_t type;
@@ -2927,18 +2518,10 @@ static void op_export_proc(Program* program)
     type = interpretPopShort(program);
     value = interpretPopLong(program);
 
-    if (type == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type, value);
-    }
-
     proc_index = value;
 
     type = interpretPopShort(program);
     value = interpretPopLong(program);
-
-    if (type == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type, value);
-    }
 
     proc_ptr = program->procedures + 4 + sizeof(Procedure) * proc_index;
 
@@ -2951,15 +2534,11 @@ static void op_export_proc(Program* program)
     }
 }
 
-// 0x46C120
+// 0x45FB08
 static void op_export_var(Program* program)
 {
-    opcode_t opcode = popShortStack(program->stack, &(program->stackPointer));
-    int data = popLongStack(program->stack, &(program->stackPointer));
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
+    opcode_t opcode = interpretPopShort(program);
+    int data = interpretPopLong(program);
 
     if (exportExportVariable(program, interpretGetName(program, data))) {
         char err[256];
@@ -2968,7 +2547,7 @@ static void op_export_var(Program* program)
     }
 }
 
-// 0x46C1A0
+// 0x45FB70
 static void op_exit(Program* program)
 {
     program->flags |= PROGRAM_FLAG_EXITED;
@@ -2980,30 +2559,16 @@ static void op_exit(Program* program)
         }
     }
 
-    if (!program->exited) {
-        removeProgramReferences(program);
-        program->exited = true;
-    }
+    purgeProgram(program);
 }
 
-// 0x46C1EC
+// 0x45FBBC
 static void op_detach(Program* program)
 {
-    Program* parent = program->parent;
-    if (parent == NULL) {
-        return;
-    }
-
-    parent->flags &= ~PROGRAM_FLAG_0x20;
-    parent->flags &= ~PROGRAM_FLAG_0x0100;
-
-    if (parent->child == program) {
-        parent->child = NULL;
-    }
+    detachProgram(program);
 }
 
-// callstart
-// 0x46C218
+// 0x45FBE8
 static void op_callstart(Program* program)
 {
     opcode_t type;
@@ -3017,10 +2582,6 @@ static void op_callstart(Program* program)
 
     type = interpretPopShort(program);
     value = interpretPopLong(program);
-
-    if (type == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type, value);
-    }
 
     if ((type & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
         interpretError("Invalid type given to callstart");
@@ -3041,8 +2602,7 @@ static void op_callstart(Program* program)
     program->child->windowId = program->windowId;
 }
 
-// spawn
-// 0x46C344
+// 0x45FCFC
 static void op_spawn(Program* program)
 {
     opcode_t type;
@@ -3056,10 +2616,6 @@ static void op_spawn(Program* program)
 
     type = interpretPopShort(program);
     value = interpretPopLong(program);
-
-    if (type == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, type, value);
-    }
 
     if ((type & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
         interpretError("Invalid type given to spawn");
@@ -3091,16 +2647,11 @@ static void op_spawn(Program* program)
     }
 }
 
-// fork
-// 0x46C490
+// 0x45FE30
 static Program* op_fork_helper(Program* program)
 {
-    opcode_t opcode = popShortStack(program->stack, &(program->stackPointer));
-    int data = popLongStack(program->stack, &(program->stackPointer));
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
+    opcode_t opcode = interpretPopShort(program);
+    int data = interpretPopLong(program);
 
     char* name = interpretGetString(program, opcode, data);
     Program* forked = runScript(name);
@@ -3116,15 +2667,13 @@ static Program* op_fork_helper(Program* program)
     return forked;
 }
 
-// NOTE: Uncollapsed 0x46C490 with different signature.
-//
-// 0x46C490
+// 0x45FE30
 static void op_fork(Program* program)
 {
     op_fork_helper(program);
 }
 
-// 0x46C574
+// 0x45FF04
 static void op_exec(Program* program)
 {
     Program* parent = program->parent;
@@ -3136,22 +2685,12 @@ static void op_exec(Program* program)
     }
 
     fork->child = NULL;
-
     program->parent = NULL;
-    program->flags |= PROGRAM_FLAG_EXITED;
 
-    // probably inlining due to check for null
-    parent = program->parent;
-    if (parent != NULL) {
-        if ((parent->flags & PROGRAM_FLAG_0x0100) != 0) {
-            parent->flags &= ~PROGRAM_FLAG_0x0100;
-        }
-    }
-
-    purgeProgram(program);
+    op_exit(program);
 }
 
-// 0x46C5D8
+// 0x45FF68
 static void op_check_arg_count(Program* program)
 {
     opcode_t opcode[2];
@@ -3161,10 +2700,6 @@ static void op_check_arg_count(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
     }
 
     int expectedArgumentCount = data[0];
@@ -3179,16 +2714,11 @@ static void op_check_arg_count(Program* program)
     }
 }
 
-// lookup_string_proc
-// 0x46C6B4
+// 0x460048
 static void op_lookup_string_proc(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_STRING) {
         interpretError("Wrong type given to lookup_string_proc\n");
@@ -3221,7 +2751,7 @@ static void op_lookup_string_proc(Program* program)
     interpretError(err);
 }
 
-// 0x46C7DC
+// 0x460190
 void initInterpreter()
 {
     enabled = 1;
@@ -3308,16 +2838,14 @@ void initInterpreter()
     initExport();
 }
 
-// 0x46CC68
+// 0x46061C
 void interpretClose()
 {
     exportClose();
     intlibClose();
 }
 
-// NOTE: Unused.
-//
-// 0x46CC74
+// 0x460628
 void interpretEnableInterpreter(int value)
 {
     enabled = value;
@@ -3331,7 +2859,7 @@ void interpretEnableInterpreter(int value)
     }
 }
 
-// 0x46CCA4
+// 0x460658
 void interpret(Program* program, int a2)
 {
     // 0x59E798
@@ -3427,40 +2955,36 @@ void interpret(Program* program, int a2)
 
     program->flags &= ~PROGRAM_FLAG_0x40;
     currentProgram = oldCurrentProgram;
-
-    checkProgramStrings(program);
 }
 
 // Prepares program stacks for executing proc at [address].
 //
-// 0x46CED0
+// 0x460884
 static void setupCallWithReturnVal(Program* program, int address, int returnAddress)
 {
     // Save current instruction pointer
-    pushLongStack(program->returnStack, &(program->returnStackPointer), program->instructionPointer);
+    rPushLong(program, program->instructionPointer);
     rPushShort(program, VALUE_TYPE_INT);
 
     // Save return address
-    pushLongStack(program->returnStack, &(program->returnStackPointer), returnAddress);
+    rPushLong(program, returnAddress);
     rPushShort(program, VALUE_TYPE_INT);
 
     // Save program flags
-    pushLongStack(program->stack, &(program->stackPointer), program->flags & 0xFFFF);
+    interpretPushLong(program, program->flags & 0xFFFF);
     interpretPushShort(program, VALUE_TYPE_INT);
 
-    pushLongStack(program->stack, &(program->stackPointer), (intptr_t)program->checkWaitFunc);
+    interpretPushLong(program, (intptr_t)program->checkWaitFunc);
     interpretPushShort(program, VALUE_TYPE_INT);
 
-    pushLongStack(program->stack, &(program->stackPointer), program->windowId);
+    interpretPushLong(program, program->windowId);
     interpretPushShort(program, VALUE_TYPE_INT);
 
     program->flags &= ~0xFFFF;
     program->instructionPointer = address;
 }
 
-// NOTE: Inlined.
-//
-// 0x46CF78
+// 0x46093C
 static void setupCall(Program* program, int address, int returnAddress)
 {
     setupCallWithReturnVal(program, address, returnAddress);
@@ -3468,32 +2992,32 @@ static void setupCall(Program* program, int address, int returnAddress)
     interpretPushShort(program, VALUE_TYPE_INT);
 }
 
-// 0x46CF9C
+// 0x460968
 static void setupExternalCallWithReturnVal(Program* program1, Program* program2, int address, int a4)
 {
-    pushLongStack(program2->returnStack, &(program2->returnStackPointer), program2->instructionPointer);
+    rPushLong(program2, program2->instructionPointer);
     rPushShort(program2, VALUE_TYPE_INT);
 
-    pushLongStack(program2->returnStack, &(program2->returnStackPointer), program1->flags & 0xFFFF);
+    rPushLong(program2, program1->flags & 0xFFFF);
     rPushShort(program2, VALUE_TYPE_INT);
 
-    pushLongStack(program2->returnStack, &(program2->returnStackPointer), (intptr_t)program1->checkWaitFunc);
+    rPushLong(program2, (intptr_t)program1->checkWaitFunc);
     rPushShort(program2, VALUE_TYPE_INT);
 
-    pushLongStack(program2->returnStack, &(program2->returnStackPointer), (intptr_t)program1);
+    rPushLong(program2, (intptr_t)program1);
     rPushShort(program2, VALUE_TYPE_INT);
 
-    pushLongStack(program2->returnStack, &(program2->returnStackPointer), a4);
+    rPushLong(program2, a4);
     rPushShort(program2, VALUE_TYPE_INT);
 
-    pushLongStack(program2->stack, &(program2->stackPointer), program2->flags & 0xFFFF);
-    rPushShort(program2, VALUE_TYPE_INT);
+    interpretPushLong(program2, program2->flags & 0xFFFF);
+    interpretPushShort(program2, VALUE_TYPE_INT);
 
-    pushLongStack(program2->stack, &(program2->stackPointer), (intptr_t)program2->checkWaitFunc);
-    rPushShort(program2, VALUE_TYPE_INT);
+    interpretPushLong(program2, (intptr_t)program2->checkWaitFunc);
+    interpretPushShort(program2, VALUE_TYPE_INT);
 
-    pushLongStack(program2->stack, &(program2->stackPointer), program2->windowId);
-    rPushShort(program2, VALUE_TYPE_INT);
+    interpretPushLong(program2, program2->windowId);
+    interpretPushShort(program2, VALUE_TYPE_INT);
 
     program2->flags &= ~0xFFFF;
     program2->instructionPointer = address;
@@ -3502,7 +3026,7 @@ static void setupExternalCallWithReturnVal(Program* program1, Program* program2,
     program1->flags |= PROGRAM_FLAG_0x20;
 }
 
-// 0x46D0B0
+// 0x460A94
 static void setupExternalCall(Program* program1, Program* program2, int address, int a4)
 {
     setupExternalCallWithReturnVal(program1, program2, address, a4);
@@ -3510,7 +3034,7 @@ static void setupExternalCall(Program* program1, Program* program2, int address,
     interpretPushShort(program2, VALUE_TYPE_INT);
 }
 
-// 0x46DB58
+// 0x461728
 void executeProc(Program* program, int procedureIndex)
 {
     unsigned char* procedurePtr;
@@ -3566,7 +3090,7 @@ void executeProc(Program* program, int procedureIndex)
 // Returns index of the procedure with specified name or -1 if no such
 // procedure exists.
 //
-// 0x46DCD0
+// 0x461938
 int interpretFindProcedure(Program* program, const char* name)
 {
     int procedureCount = fetchLong(program->procedures, 0);
@@ -3584,7 +3108,7 @@ int interpretFindProcedure(Program* program, const char* name)
     return -1;
 }
 
-// 0x46DD2C
+// 0x4619D4
 void executeProcedure(Program* program, int procedureIndex)
 {
     unsigned char* procedurePtr;
@@ -3629,7 +3153,7 @@ void executeProcedure(Program* program, int procedureIndex)
     }
 }
 
-// 0x46DEE4
+// 0x461BE8
 static void doEvents()
 {
     ProgramListNode* programListNode;
@@ -3669,9 +3193,6 @@ static void doEvents()
                 if ((programListNode->program->flags & PROGRAM_FLAG_0x04) == 0) {
                     opcode = interpretPopShort(programListNode->program);
                     data = interpretPopLong(programListNode->program);
-                    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-                        interpretDecStringRef(programListNode->program, opcode, data);
-                    }
 
                     programListNode->program->flags = oldProgramFlags;
                     programListNode->program->instructionPointer = oldInstructionPointer;
@@ -3698,7 +3219,7 @@ static void doEvents()
     }
 }
 
-// 0x46E10C
+// 0x461E48
 static void removeProgList(ProgramListNode* programListNode)
 {
     ProgramListNode* tmp;
@@ -3716,13 +3237,13 @@ static void removeProgList(ProgramListNode* programListNode)
     }
 
     interpretFreeProgram(programListNode->program);
-    myfree(programListNode, __FILE__, __LINE__); // "..\\int\\INTRPRET.C", 2923
+    myfree(programListNode, __FILE__, __LINE__); // "..\int\INTRPRET.C", 2690
 }
 
-// 0x46E154
+// 0x461E98
 static void insertProgram(Program* program)
 {
-    ProgramListNode* programListNode = (ProgramListNode*)mymalloc(sizeof(*programListNode), __FILE__, __LINE__); // .\\int\\INTRPRET.C, 2907
+    ProgramListNode* programListNode = (ProgramListNode*)mymalloc(sizeof(*programListNode), __FILE__, __LINE__); // .\\int\\INTRPRET.C, 2674
     programListNode->program = program;
     programListNode->next = head;
     programListNode->prev = NULL;
@@ -3734,18 +3255,14 @@ static void insertProgram(Program* program)
     head = programListNode;
 }
 
-// NOTE: Inlined.
-//
-// 0x46E15C
+// 0x461E90
 void runProgram(Program* program)
 {
     program->flags |= PROGRAM_FLAG_0x02;
     insertProgram(program);
 }
 
-// NOTE: Inlined.
-//
-// 0x46E19C
+// 0x461ED8
 Program* runScript(char* name)
 {
     Program* program;
@@ -3761,9 +3278,7 @@ Program* runScript(char* name)
     return program;
 }
 
-// NOTE: Unused.
-//
-// 0x46E1DC
+// 0x461F18
 void interpretSetCPUBurstSize(int value)
 {
     if (value < 1) {
@@ -3773,7 +3288,7 @@ void interpretSetCPUBurstSize(int value)
     cpuBurstSize = value;
 }
 
-// 0x46E1EC
+// 0x461F28
 void updatePrograms()
 {
     ProgramListNode* curr = head;
@@ -3791,7 +3306,7 @@ void updatePrograms()
     updateIntLib();
 }
 
-// 0x46E238
+// 0x461F74
 void clearPrograms()
 {
     ProgramListNode* curr = head;
@@ -3802,9 +3317,7 @@ void clearPrograms()
     }
 }
 
-// NOTE: Unused.
-//
-// 0x46E254
+// 0x461F90
 void clearTopProgram()
 {
     ProgramListNode* next;
@@ -3814,9 +3327,7 @@ void clearTopProgram()
     head = next;
 }
 
-// NOTE: Unused.
-//
-// 0x46E26C
+// 0x461FA8
 char** getProgramList(int* programListLengthPtr)
 {
     char** programList;
@@ -3835,14 +3346,14 @@ char** getProgramList(int* programListLengthPtr)
                 programListLength++;
             } else if (it == 2) {
                 if (index < programListLength) {
-                    programList[index++] = mystrdup(programListNode->program->name, __FILE__, __LINE__); // "..\int\INTRPRET.C", 3014
+                    programList[index++] = mystrdup(programListNode->program->name, __FILE__, __LINE__); // "..\int\INTRPRET.C", 2781
                 }
             }
             programListNode = programListNode->next;
         }
 
         if (it == 1) {
-            programList = (char**)mymalloc(sizeof(*programList) * programListLength, __FILE__, __LINE__); // "..\int\INTRPRET.C", 3021
+            programList = (char**)mymalloc(sizeof(*programList) * programListLength, __FILE__, __LINE__); // "..\int\INTRPRET.C", 2788
         }
     }
 
@@ -3853,9 +3364,7 @@ char** getProgramList(int* programListLengthPtr)
     return programList;
 }
 
-// NOTE: Unused.
-//
-// 0x46E31C
+// 0x462058
 void freeProgramList(char** programList, int programListLength)
 {
     int index;
@@ -3863,15 +3372,15 @@ void freeProgramList(char** programList, int programListLength)
     if (programList != NULL) {
         for (index = 0; index < programListLength; index++) {
             if (programList[index] != NULL) {
-                myfree(programList[index], __FILE__, __LINE__); // "..\int\INTRPRET.C", 3035
+                myfree(programList[index], __FILE__, __LINE__); // "..\int\INTRPRET.C", 2802
             }
         }
     }
 
-    myfree(programList, __FILE__, __LINE__); // "..\int\INTRPRET.C", 3038
+    myfree(programList, __FILE__, __LINE__); // "..\int\INTRPRET.C", 2805
 }
 
-// 0x46E368
+// 0x4620A4
 void interpretAddFunc(int opcode, OpcodeHandler* handler)
 {
     int index = opcode & 0x3FFF;
@@ -3883,17 +3392,13 @@ void interpretAddFunc(int opcode, OpcodeHandler* handler)
     opTable[index] = handler;
 }
 
-// NOTE: Unused.
-//
-// 0x46E398
+// 0x4620D4
 void interpretSetFilenameFunc(InterpretMangleFunc* func)
 {
     filenameFunc = func;
 }
 
-// NOTE: Unused.
-//
-// 0x46E3A0
+// 0x4620DC
 void interpretSuspendEvents()
 {
     suspendEvents++;
@@ -3902,9 +3407,7 @@ void interpretSuspendEvents()
     }
 }
 
-// NOTE: Unused.
-//
-// 0x46E3C0
+// 0x4620FC
 void interpretResumeEvents()
 {
     int counter;
@@ -3935,47 +3438,14 @@ void interpretResumeEvents()
     }
 }
 
-// NOTE: Unused.
-//
-// 0x46E4AC
+// 0x46224C
 int interpretSaveProgramState()
 {
     return 0;
 }
 
-// 0x46E5EC
-void interpretDumpStringHeap()
+// 0x46224C
+int interpretLoadProgramState()
 {
-    ProgramListNode* programListNode = head;
-    while (programListNode != NULL) {
-        Program* program = programListNode->program;
-        if (program != NULL) {
-            int total = 0;
-
-            if (program->dynamicStrings != NULL) {
-                debug_printf("Program %s\n");
-
-                unsigned char* heap = program->dynamicStrings + sizeof(int);
-                while (*(unsigned short*)heap != 0x8000) {
-                    int size = *(short*)heap;
-                    if (size >= 0) {
-                        int refcount = *(short*)(heap + sizeof(short));
-                        debug_printf("Size: %d, ref: %d, string %s\n", size, refcount, (char*)(heap + sizeof(short) + sizeof(short)));
-                    } else {
-                        debug_printf("Free space, length %d\n", -size);
-                    }
-
-                    // TODO: Not sure about total, probably calculated wrong, check.
-                    heap += sizeof(short) + sizeof(short) + size;
-                    total += sizeof(short) + sizeof(short) + size;
-                }
-
-                debug_printf("Total length of heap %d, stored length %d\n", total, *(int*)(program->dynamicStrings));
-            } else {
-                debug_printf("No string heap for program %s\n", program->name);
-            }
-        }
-
-        programListNode = programListNode->next;
-    }
+    return 0;
 }

@@ -1846,10 +1846,6 @@ static void op_obj_can_see_obj(Program* program)
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
 
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
-
         if ((opcode[arg] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
             interpretError("script error: %s: invalid arg %d to obj_can_see_obj", program->name, arg);
         }
@@ -2365,10 +2361,6 @@ static void op_set_light_level(Program* program)
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
 
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
-
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("script error: %s: invalid arg to set_light_level", program->name);
     }
@@ -2438,10 +2430,6 @@ static void op_kill_critter(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
 
         if ((opcode[arg] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
             interpretError("script error: %s: invalid arg %d to kill_critter", program->name, arg);
@@ -2536,10 +2524,6 @@ static void op_kill_critter_type(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
 
         if ((opcode[arg] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
             interpretError("script error: %s: invalid arg %d to kill_critter", program->name, arg);
@@ -2748,10 +2732,6 @@ static void op_has_trait(Program* program)
     for (int arg = 0; arg < 3; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
 
         if ((opcode[arg] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
             interpretError("script error: %s: invalid arg %d to has_trait", program->name, arg);
@@ -3127,10 +3107,6 @@ static void op_critter_add_trait(Program* program)
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
 
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
-
         if ((opcode[arg] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
             interpretError("script error: %s: invalid arg %d to critter_add_trait", program->name, arg);
         }
@@ -3210,10 +3186,6 @@ static void op_critter_rm_trait(Program* program)
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
 
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
-
         if ((opcode[arg] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
             interpretError("script error: %s: invalid arg %d to critter_rm_trait", program->name, arg);
         }
@@ -3258,10 +3230,6 @@ static void op_proto_data(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
 
         if ((opcode[arg] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
             interpretError("script error: %s: invalid arg %d to proto_data", program->name, arg);
@@ -3335,10 +3303,6 @@ static void op_critter_inven_obj(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
 
         if ((opcode[arg] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
             interpretError("script error: %s: invalid arg %d to critter_inven_obj", program->name, arg);
@@ -3597,10 +3561,6 @@ static void op_anim(Program* program)
     for (int arg = 0; arg < 3; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
 
         if ((opcode[arg] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
             interpretError("script error: %s: invalid arg %d to anim", program->name, arg);
@@ -3990,10 +3950,6 @@ static void op_rm_mult_objs_from_inven(Program* program)
     for (int arg = 0; arg < 3; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
 
         if ((opcode[arg] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
             interpretError("script error: %s: invalid arg %d to rm_mult_objs_from_inven", program->name, arg);
@@ -4789,10 +4745,6 @@ static void op_anim_action_frame(Program* program)
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
 
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
-
         if ((opcode[arg] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
             interpretError("script error: %s: invalid arg %d to anim_action_frame", program->name, arg);
         }
@@ -4866,10 +4818,6 @@ static void op_critter_mod_skill(Program* program)
     for (int arg = 0; arg < 3; arg++) {
         opcode[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcode[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcode[arg], data[arg]);
-        }
 
         if ((opcode[arg] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
             interpretError("script error: %s: invalid arg %d to critter_mod_skill", program->name, arg);
@@ -5097,10 +5045,6 @@ static void op_attack_setup(Program* program)
     for (int arg = 0; arg < 2; arg++) {
         opcodes[arg] = interpretPopShort(program);
         data[arg] = interpretPopLong(program);
-
-        if (opcodes[arg] == VALUE_TYPE_DYNAMIC_STRING) {
-            interpretDecStringRef(program, opcodes[arg], data[arg]);
-        }
 
         if ((opcodes[arg] & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
             interpretError("script error: %s: invalid arg %d to attack_setup", program->name, arg);
@@ -5366,10 +5310,6 @@ static void op_obj_art_fid(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("script error: %s: invalid arg to obj_art_fid", program->name);
@@ -5684,10 +5624,6 @@ static void op_get_pc_stat(Program* program)
 {
     opcode_t opcode = interpretPopShort(program);
     int data = interpretPopLong(program);
-
-    if (opcode == VALUE_TYPE_DYNAMIC_STRING) {
-        interpretDecStringRef(program, opcode, data);
-    }
 
     if ((opcode & VALUE_TYPE_MASK) != VALUE_TYPE_INT) {
         interpretError("script error: %s: invalid arg to get_pc_stat", program->name);
