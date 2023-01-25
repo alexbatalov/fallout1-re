@@ -472,7 +472,7 @@ static void main_selfrun_play()
 // 0x472D90
 static void main_death_scene()
 {
-    // 0x4F9F08
+    // 0x4725B0
     static const char* deathFileNameList[] = {
         "narrator\\nar_3",
         "narrator\\nar_4",
