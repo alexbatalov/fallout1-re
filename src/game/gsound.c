@@ -1942,7 +1942,7 @@ static int gsound_speech_find_dont_copy(char* dest, const char* src)
     sprintf(path, "%s%s%s", sound_speech_path, src, ".ACM");
 
     // NOTE: Uninline.
-    if (gsound_file_exists_db(path)) {
+    if (!gsound_file_exists_db(path)) {
         if (gsound_debug) {
             debug_printf("-- find failed ");
         }
