@@ -95,43 +95,43 @@ static bool heap_build_fake_move_list(size_t count);
 
 // An array of pointers to free heap blocks.
 //
-// 0x518E9C
+// 0x50549C
 static unsigned char** heap_free_list = NULL;
 
 // An array of moveable extents in heap.
 //
-// 0x518EA0
+// 0x5054A0
 static HeapMoveableExtent* heap_moveable_list = NULL;
 
 // An array of pointers to moveable heap blocks.
 //
-// 0x518EA4
+// 0x5054A4
 static unsigned char** heap_subblock_list = NULL;
 
 // An array of indexes into [heap_free_list] array to track which free blocks
 // were already reserved for subsequent moving.
 //
-// 0x518EA8
+// 0x5054A8
 static int* heap_fake_move_list = NULL;
 
 // The length of the [heap_free_list] array.
 //
-// 0x518EAC
+// 0x5054AC
 static int heap_free_list_size = 0;
 
 // The length of [heap_moveable_list] array.
 //
-// 0x518EB0
+// 0x5054B0
 static int heap_moveable_list_size = 0;
 
 // The length of [heap_subblock_list] array.
 //
-// 0x518EB4
+// 0x5054B4
 static int heap_subblock_list_size = 0;
 
 // The length of [heap_fake_move_list] array.
 //
-// 0x518EB8
+// 0x5054B8
 static size_t heap_fake_move_list_size = 0;
 
 // The number of heaps.
@@ -139,10 +139,10 @@ static size_t heap_fake_move_list_size = 0;
 // This value is used to init/free internal temporary buffers
 // needed for any heap.
 //
-// 0x518EBC
+// 0x5054BC
 static int heap_count = 0;
 
-// 0x452974
+// 0x449F54
 bool heap_init(Heap* heap, int a2)
 {
     if (heap == NULL) {
@@ -187,7 +187,7 @@ bool heap_init(Heap* heap, int a2)
     return false;
 }
 
-// 0x452A3C
+// 0x44A01C
 bool heap_exit(Heap* heap)
 {
     if (heap == NULL) {
@@ -218,7 +218,7 @@ bool heap_exit(Heap* heap)
     return true;
 }
 
-// 0x452AD0
+// 0x44A0B0
 bool heap_allocate(Heap* heap, int* handleIndexPtr, int size, int a4)
 {
     HeapBlockHeader* blockHeader;
@@ -335,7 +335,7 @@ err:
     return false;
 }
 
-// 0x452CB4
+// 0x44A294
 bool heap_deallocate(Heap* heap, int* handleIndexPtr)
 {
     if (heap == NULL || handleIndexPtr == NULL) {
@@ -404,7 +404,7 @@ bool heap_deallocate(Heap* heap, int* handleIndexPtr)
     return false;
 }
 
-// 0x452DE0
+// 0x44A3C0
 bool heap_lock(Heap* heap, int handleIndex, unsigned char** bufferPtr)
 {
     if (heap == NULL) {
@@ -465,7 +465,7 @@ bool heap_lock(Heap* heap, int handleIndex, unsigned char** bufferPtr)
     return false;
 }
 
-// 0x452EE4
+// 0x44A4C4
 bool heap_unlock(Heap* heap, int handleIndex)
 {
     if (heap == NULL) {
@@ -514,7 +514,7 @@ bool heap_unlock(Heap* heap, int handleIndex)
     return true;
 }
 
-// 0x452FC4
+// 0x44A5A4
 bool heap_validate(Heap* heap)
 {
     debug_printf("Validating heap...\n");
@@ -630,7 +630,7 @@ bool heap_validate(Heap* heap)
     return true;
 }
 
-// 0x4532AC
+// 0x44A888
 bool heap_stats(Heap* heap, char* dest)
 {
     if (heap == NULL || dest == NULL) {
@@ -664,7 +664,7 @@ bool heap_stats(Heap* heap, char* dest)
     return true;
 }
 
-// 0x453304
+// 0x44A8E0
 static bool heap_create_lists()
 {
     // NOTE: Original code is slightly different. It uses deep nesting or a
@@ -705,7 +705,7 @@ static bool heap_create_lists()
     return false;
 }
 
-// 0x4533A0
+// 0x44A97C
 static void heap_destroy_lists()
 {
     if (heap_fake_move_list != NULL) {
@@ -733,7 +733,7 @@ static void heap_destroy_lists()
     heap_free_list_size = 0;
 }
 
-// 0x453430
+// 0x44AA0C
 static bool heap_init_handles(Heap* heap)
 {
     heap->handles = (HeapHandle*)mem_malloc(sizeof(*heap->handles) * HEAP_HANDLES_INITIAL_LENGTH);
@@ -751,9 +751,7 @@ static bool heap_init_handles(Heap* heap)
     return false;
 }
 
-// NOTE: Inlined.
-//
-// 0x453480
+// 0x44AA5C
 static bool heap_exit_handles(Heap* heap)
 {
     if (heap->handles == NULL) {
@@ -767,7 +765,7 @@ static bool heap_exit_handles(Heap* heap)
     return true;
 }
 
-// 0x4534B0
+// 0x44AA8C
 static bool heap_acquire_handle(Heap* heap, int* handleIndexPtr)
 {
     // Loop thru already available handles and find first that is not currently
@@ -798,9 +796,7 @@ static bool heap_acquire_handle(Heap* heap, int* handleIndexPtr)
     return true;
 }
 
-// NOTE: Inlined.
-//
-// 0x453538
+// 0x44AB14
 static bool heap_release_handle(Heap* heap, int handleIndex)
 {
     heap->handles[handleIndex].state = HEAP_HANDLE_STATE_INVALID;
@@ -809,9 +805,7 @@ static bool heap_release_handle(Heap* heap, int handleIndex)
     return true;
 }
 
-// NOTE: Inlined.
-//
-// 0x453558
+// 0x44AB34
 static bool heap_clear_handles(Heap* heap, HeapHandle* handles, unsigned int count)
 {
     unsigned int index;
@@ -824,7 +818,7 @@ static bool heap_clear_handles(Heap* heap, HeapHandle* handles, unsigned int cou
     return true;
 }
 
-// 0x453588
+// 0x44AB64
 static bool heap_find_free_block(Heap* heap, int size, void** blockPtr, int a4)
 {
     unsigned char* biggestFreeBlock;
@@ -1094,7 +1088,7 @@ system:
     return false;
 }
 
-// 0x453BC4
+// 0x44B1A0
 static bool heap_build_free_list(Heap* heap)
 {
     if (heap->freeBlocks == 0) {
@@ -1155,9 +1149,7 @@ static bool heap_build_free_list(Heap* heap)
     return true;
 }
 
-// NOTE: Inlined.
-//
-// 0x453C9C
+// 0x44B278
 static bool heap_sort_free_list(Heap* heap)
 {
     if (heap->freeBlocks > 1) {
@@ -1167,7 +1159,7 @@ static bool heap_sort_free_list(Heap* heap)
     return true;
 }
 
-// 0x453CC4
+// 0x44B2A0
 static int heap_qsort_compare_free(const void* a1, const void* a2)
 {
     HeapBlockHeader* header1 = *(HeapBlockHeader**)a1;
@@ -1175,7 +1167,7 @@ static int heap_qsort_compare_free(const void* a1, const void* a2)
     return header1->size - header2->size;
 }
 
-// 0x453CD0
+// 0x44B2AC
 static bool heap_build_moveable_list(Heap* heap, int* moveableExtentsLengthPtr, int* maxBlocksLengthPtr)
 {
     // Calculate max number of extents. It's only possible when every
@@ -1259,9 +1251,7 @@ static bool heap_build_moveable_list(Heap* heap, int* moveableExtentsLengthPtr, 
     return true;
 }
 
-// NOTE: Inlined.
-//
-// 0x453E54
+// 0x44B430
 static bool heap_sort_moveable_list(Heap* heap, size_t count)
 {
     qsort(heap_moveable_list, count, sizeof(*heap_moveable_list), heap_qsort_compare_moveable);
@@ -1269,7 +1259,7 @@ static bool heap_sort_moveable_list(Heap* heap, size_t count)
     return true;
 }
 
-// 0x453E74
+// 0x44B450
 static int heap_qsort_compare_moveable(const void* a1, const void* a2)
 {
     HeapMoveableExtent* v1 = (HeapMoveableExtent*)a1;
@@ -1279,7 +1269,7 @@ static int heap_qsort_compare_moveable(const void* a1, const void* a2)
 
 // Build list of pointers to moveable blocks in given extent.
 //
-// 0x453E80
+// 0x44B458
 static bool heap_build_subblock_list(int extentIndex)
 {
     HeapMoveableExtent* extent = &(heap_moveable_list[extentIndex]);
@@ -1306,9 +1296,7 @@ static bool heap_build_subblock_list(int extentIndex)
     return moveableBlockIndex == extent->moveableBlocksLength;
 }
 
-// NOTE: Inlined.
-//
-// 0x453F24
+// 0x44B4FC
 static bool heap_sort_subblock_list(size_t count)
 {
     qsort(heap_subblock_list, count, sizeof(*heap_subblock_list), heap_qsort_compare_subblock);
@@ -1316,7 +1304,7 @@ static bool heap_sort_subblock_list(size_t count)
     return true;
 }
 
-// NOTE: Uncollapsed 0x453CC4.
+// 0x44B2A0
 static int heap_qsort_compare_subblock(const void* a1, const void* a2)
 {
     HeapBlockHeader* header1 = *(HeapBlockHeader**)a1;
@@ -1324,9 +1312,7 @@ static int heap_qsort_compare_subblock(const void* a1, const void* a2)
     return header1->size - header2->size;
 }
 
-// NOTE: Inlined.
-//
-// 0x453F4C
+// 0x44B524
 static bool heap_build_fake_move_list(size_t count)
 {
     if (count > heap_fake_move_list_size) {
