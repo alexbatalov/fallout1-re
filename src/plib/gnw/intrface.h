@@ -22,6 +22,7 @@ int win_width_needed(char** fileNameList, int fileNameListLength);
 int win_input_str(int win, char* dest, int maxLength, int x, int y, int textColor, int backgroundColor);
 int GNW_process_menu(MenuBar* menuBar, int pulldownIndex);
 void GNW_intr_init();
+void win_timed_msg_defaults(unsigned int persistence);
 void GNW_intr_exit();
 
 #endif /* FALLOUT_PLIB_GNW_INTRFACE_H_ */

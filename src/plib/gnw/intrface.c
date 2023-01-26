@@ -23,59 +23,53 @@ static void tm_kill_out_of_order(int a1);
 static void tm_click_response(int btn);
 static int tm_index_active(int a1);
 
-// 0x51E414
+// 0x53A268
 static int wd = -1;
 
-// 0x51E41C
+// 0x53A270
 static bool tm_watch_active = false;
 
-// 0x6B2340
+// 0x6B06D0
 static struct {
     int taken;
     int y;
 } tm_location[5];
 
-// 0x6B2368
-static int tm_text_x;
-
-// 0x6B236C
-static int tm_h;
-
-// 0x6B2370
+// 0x6B06F8
 static struct {
     int created;
     int id;
     int location;
 } tm_queue[5];
 
-// 0x6B23AC
+// 0x6B0734
+static int tm_text_y;
+
+// 0x6B0738
+static int tm_text_x;
+
+// 0x6B073C
+static int tm_h;
+
+// 0x6B0740
 static unsigned int tm_persistence;
 
-// 0x6B23B0
+// 0x6B0744
+static int tm_kill;
+
+// 0x6B0748
 static int scr_center_x;
 
-// 0x6B23B4
-int tm_text_y;
+// 0x6B074C
+static int tm_add;
 
-// 0x6B23B8
-int tm_kill;
-
-// 0x6B23BC
-int tm_add;
-
-// 0x6B23C0
-int curry;
-
-// 0x6B23C4
-int currx;
-
-// 0x4DA6C0
+// 0x4C6AA0
 int win_list_select(const char* title, char** fileList, int fileListLength, SelectFunc* callback, int x, int y, int a7)
 {
     return win_list_select_at(title, fileList, fileListLength, callback, x, y, a7, 0);
 }
 
-// 0x4DA70C
+// 0x4C6AEC
 int win_list_select_at(const char* title, char** items, int itemsLength, SelectFunc* callback, int x, int y, int a7, int a8)
 {
     if (!GNW_win_init_flag) {
@@ -525,7 +519,7 @@ int win_list_select_at(const char* title, char** items, int itemsLength, SelectF
     return absoluteSelectedItemIndex;
 }
 
-// 0x4DB478
+// 0x4C7858
 int win_get_str(char* dest, int length, const char* title, int x, int y)
 {
     if (!GNW_win_init_flag) {
@@ -604,7 +598,7 @@ int win_get_str(char* dest, int length, const char* title, int x, int y)
     return 0;
 }
 
-// 0x4DBA98
+// 0x4C7E78
 int win_msg(const char* string, int x, int y, int flags)
 {
     if (!GNW_win_init_flag) {
@@ -661,7 +655,7 @@ int win_msg(const char* string, int x, int y, int flags)
     return 0;
 }
 
-// 0x4DBBC4
+// 0x4C7FA4
 int win_pull_down(char** items, int itemsLength, int x, int y, int a5)
 {
     if (!GNW_win_init_flag) {
@@ -677,7 +671,7 @@ int win_pull_down(char** items, int itemsLength, int x, int y, int a5)
     return process_pull_down(win, &rect, items, itemsLength, a5, colorTable[GNW_wcolor[0]], NULL, -1);
 }
 
-// 0x4DBC34
+// 0x4C8014
 static int create_pull_down(char** stringList, int stringListLength, int x, int y, int a5, int a6, Rect* rect)
 {
     int windowHeight = stringListLength * text_height() + 16;
@@ -700,9 +694,22 @@ static int create_pull_down(char** stringList, int stringListLength, int x, int 
     return win;
 }
 
-// 0x4DC30C
+// 0x4C80E4
+static int process_pull_down(int win, Rect* rect, char** items, int itemsLength, int a5, int a6, MenuBar* menuBar, int pulldownIndex)
+{
+    // TODO: Incomplete.
+    return -1;
+}
+
+// 0x4C86EC
 int win_debug(char* string)
 {
+    // 0x6B0750
+    static int curry;
+
+    // 0x6B0754
+    static int currx;
+
     if (!GNW_win_init_flag) {
         return -1;
     }
@@ -816,14 +823,14 @@ int win_debug(char* string)
     return 0;
 }
 
-// 0x4DC65C
+// 0x4C8A3C
 static void win_debug_delete(int btn, int keyCode)
 {
     win_delete(wd);
     wd = -1;
 }
 
-// 0x4DC674
+// 0x4C8A54
 int win_register_menu_bar(int win, int x, int y, int width, int height, int borderColor, int backgroundColor)
 {
     Window* window = GNW_find(win);
@@ -870,7 +877,7 @@ int win_register_menu_bar(int win, int x, int y, int width, int height, int bord
     return 0;
 }
 
-// 0x4DC768
+// 0x4C8B48
 int win_register_menu_pulldown(int win, int x, char* title, int keyCode, int itemsLength, char** items, int a7, int a8)
 {
     Window* window = GNW_find(win);
@@ -929,7 +936,7 @@ int win_register_menu_pulldown(int win, int x, char* title, int keyCode, int ite
     return 0;
 }
 
-// 0x4DC8D0
+// 0x4C8CB0
 void win_delete_menu_bar(int win)
 {
     Window* window = GNW_find(win);
@@ -957,7 +964,52 @@ void win_delete_menu_bar(int win)
     window->menuBar = NULL;
 }
 
-// 0x4DC9F0
+// 0x4C8D10
+int GNW_process_menu(MenuBar* menuBar, int pulldownIndex)
+{
+    // 0x53A26C
+    static MenuBar* curr_menu = NULL;
+
+    if (curr_menu != NULL) {
+        return -1;
+    }
+
+    curr_menu = menuBar;
+
+    int keyCode;
+    Rect rect;
+    do {
+        MenuPulldown* pulldown = &(menuBar->pulldowns[pulldownIndex]);
+        int win = create_pull_down(pulldown->items,
+            pulldown->itemsLength,
+            pulldown->rect.ulx,
+            menuBar->rect.lry + 1,
+            pulldown->field_1C,
+            pulldown->field_20,
+            &rect);
+        if (win == -1) {
+            curr_menu = NULL;
+            return -1;
+        }
+
+        keyCode = process_pull_down(win, &rect, pulldown->items, pulldown->itemsLength, pulldown->field_1C, pulldown->field_20, menuBar, pulldownIndex);
+        if (keyCode < -1) {
+            pulldownIndex = -2 - keyCode;
+        }
+    } while (keyCode < -1);
+
+    if (keyCode != -1) {
+        flush_input_buffer();
+        GNW_add_input_buffer(keyCode);
+        keyCode = menuBar->pulldowns[pulldownIndex].keyCode;
+    }
+
+    curr_menu = NULL;
+
+    return keyCode;
+}
+
+// 0x4C8DD0
 static int find_first_letter(int ch, char** stringList, int stringListLength)
 {
     if (ch >= 'A' && ch <= 'Z') {
@@ -974,7 +1026,7 @@ static int find_first_letter(int ch, char** stringList, int stringListLength)
     return -1;
 }
 
-// 0x4DCA30
+// 0x4C8E10
 int win_width_needed(char** fileNameList, int fileNameListLength)
 {
     int maxWidth = 0;
@@ -989,7 +1041,7 @@ int win_width_needed(char** fileNameList, int fileNameListLength)
     return maxWidth;
 }
 
-// 0x4DCA5C
+// 0x4C8E3C
 int win_input_str(int win, char* dest, int maxLength, int x, int y, int textColor, int backgroundColor)
 {
     Window* window = GNW_find(win);
@@ -1097,61 +1149,9 @@ int win_input_str(int win, char* dest, int maxLength, int x, int y, int textColo
     return 0;
 }
 
-// 0x4DBD04
-static int process_pull_down(int win, Rect* rect, char** items, int itemsLength, int a5, int a6, MenuBar* menuBar, int pulldownIndex)
-{
-    // TODO: Incomplete.
-    return -1;
-}
-
-// 0x4DC930
-int GNW_process_menu(MenuBar* menuBar, int pulldownIndex)
-{
-    // 0x51E418
-    static MenuBar* curr_menu = NULL;
-
-    if (curr_menu != NULL) {
-        return -1;
-    }
-
-    curr_menu = menuBar;
-
-    int keyCode;
-    Rect rect;
-    do {
-        MenuPulldown* pulldown = &(menuBar->pulldowns[pulldownIndex]);
-        int win = create_pull_down(pulldown->items,
-            pulldown->itemsLength,
-            pulldown->rect.ulx,
-            menuBar->rect.lry + 1,
-            pulldown->field_1C,
-            pulldown->field_20,
-            &rect);
-        if (win == -1) {
-            curr_menu = NULL;
-            return -1;
-        }
-
-        keyCode = process_pull_down(win, &rect, pulldown->items, pulldown->itemsLength, pulldown->field_1C, pulldown->field_20, menuBar, pulldownIndex);
-        if (keyCode < -1) {
-            pulldownIndex = -2 - keyCode;
-        }
-    } while (keyCode < -1);
-
-    if (keyCode != -1) {
-        flush_input_buffer();
-        GNW_add_input_buffer(keyCode);
-        keyCode = menuBar->pulldowns[pulldownIndex].keyCode;
-    }
-
-    curr_menu = NULL;
-
-    return keyCode;
-}
-
 // Calculates max length of string needed to represent a1 or a2.
 //
-// 0x4DD03C
+// 0x4C941C
 static int calc_max_field_chars_wcursor(int a1, int a2)
 {
     char* str = (char*)mem_malloc(17);
@@ -1170,7 +1170,7 @@ static int calc_max_field_chars_wcursor(int a1, int a2)
     return max(len1, len2) + 1;
 }
 
-// 0x4DD3EC
+// 0x4C97CC
 void GNW_intr_init()
 {
     int v1, v2;
@@ -1200,7 +1200,13 @@ void GNW_intr_init()
     }
 }
 
-// 0x4DD4A4
+// 0x4C987C
+void win_timed_msg_defaults(unsigned int persistence)
+{
+    tm_persistence = persistence;
+}
+
+// 0x4C9884
 void GNW_intr_exit()
 {
     remove_bk_process(tm_watch_msgs);
@@ -1209,7 +1215,7 @@ void GNW_intr_exit()
     }
 }
 
-// 0x4DD66C
+// 0x4C9A48
 static void tm_watch_msgs()
 {
     if (tm_watch_active) {
@@ -1227,7 +1233,7 @@ static void tm_watch_msgs()
     tm_watch_active = 0;
 }
 
-// 0x4DD6C0
+// 0x4C9A9C
 static void tm_kill_msg()
 {
     int v0;
@@ -1252,7 +1258,7 @@ static void tm_kill_msg()
     tm_kill = v0;
 }
 
-// 0x4DD744
+// 0x4C9B20
 static void tm_kill_out_of_order(int a1)
 {
     int v7;
@@ -1294,7 +1300,7 @@ static void tm_kill_out_of_order(int a1)
     }
 }
 
-// 0x4DD82C
+// 0x4C9C04
 static void tm_click_response(int btn)
 {
     int win;
@@ -1319,7 +1325,7 @@ static void tm_click_response(int btn)
     tm_kill_out_of_order(v3);
 }
 
-// 0x4DD870
+// 0x4C9C48
 static int tm_index_active(int a1)
 {
     if (tm_kill != tm_add) {
