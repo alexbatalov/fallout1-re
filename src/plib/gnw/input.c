@@ -46,21 +46,21 @@ static void GNW95_build_key_map();
 static int GNW95_hook_keyboard(int hook);
 static void GNW95_process_key(dxinput_key_data* data);
 
-// NOT USED.
+// 0x539D6C
 static IdleFunc* idle_func = NULL;
 
-// NOT USED.
+// 0x539D70
 static FocusFunc* focus_func = NULL;
 
-// 0x51E23C
-static int GNW95_repeat_rate = 80;
+// 0x539D74
+static unsigned int GNW95_repeat_rate = 80;
 
-// 0x51E240
-static int GNW95_repeat_delay = 500;
+// 0x539D78
+static unsigned int GNW95_repeat_delay = 500;
 
 // A map of DIK_* constants normalized for QWERTY keyboard.
 //
-// 0x6ABC70
+// 0x6713F0
 unsigned char GNW95_key_map[256];
 
 // Ring buffer of input events.
@@ -68,58 +68,58 @@ unsigned char GNW95_key_map[256];
 // Looks like this buffer does not support overwriting of values. Once the
 // buffer is full it will not overwrite values until they are dequeued.
 //
-// 0x6ABD70
+// 0x6714F0
 static inputdata input_buffer[40];
 
-// 0x6ABF50
+// 0x6716D0
 GNW95RepeatStruct GNW95_key_time_stamps[256];
 
-// 0x6AC750
+// 0x671ED0
 static int input_mx;
 
-// 0x6AC754
+// 0x671ED4
 static int input_my;
 
-// 0x6AC758
-static HHOOK GNW95_keyboardHandle;
-
-// 0x6AC75C
-static bool game_paused;
-
-// 0x6AC760
-static int screendump_key;
-
-// 0x6AC764
-static int using_msec_timer;
-
-// 0x6AC768
-static int pause_key;
-
-// 0x6AC76C
-static ScreenDumpFunc* screendump_func;
-
-// 0x6AC770
-static int input_get;
-
-// 0x6AC774
-static unsigned char* screendump_buf;
-
-// 0x6AC778
-static PauseWinFunc* pause_win_func;
-
-// 0x6AC77C
-static int input_put;
-
-// 0x6AC780
-static bool bk_disabled;
-
-// 0x6AC784
+// 0x671ED8
 static FuncPtr bk_list;
 
-// 0x6AC788
+// 0x671EDC
+static HHOOK GNW95_keyboardHandle;
+
+// 0x671EE0
+static bool game_paused;
+
+// 0x671EE4
+static int screendump_key;
+
+// 0x671EE8
+static int using_msec_timer;
+
+// 0x671EEC
+static int pause_key;
+
+// 0x671EF0
+static ScreenDumpFunc* screendump_func;
+
+// 0x671EF4
+static int input_get;
+
+// 0x671EF8
+static unsigned char* screendump_buf;
+
+// 0x671EFC
+static PauseWinFunc* pause_win_func;
+
+// 0x671F00
+static int input_put;
+
+// 0x671F04
+static bool bk_disabled;
+
+// 0x671F08
 static unsigned int bk_process_time;
 
-// 0x4C8A70
+// 0x4B32C0
 int GNW_input_init(int use_msec_timer)
 {
     if (!dxinput_init()) {
@@ -158,7 +158,7 @@ int GNW_input_init(int use_msec_timer)
     return 0;
 }
 
-// 0x4C8B40
+// 0x4B3390
 void GNW_input_exit()
 {
     // NOTE: Uninline.
@@ -175,7 +175,7 @@ void GNW_input_exit()
     }
 }
 
-// 0x4C8B78
+// 0x4B33C8
 int get_input()
 {
     int v3;
@@ -199,7 +199,14 @@ int get_input()
     return -1;
 }
 
-// 0x4C8BDC
+// 0x4B3418
+void get_input_position(int* x, int* y)
+{
+    *x = input_mx;
+    *y = input_my;
+}
+
+// 0x4B342C
 void process_bk()
 {
     int v1;
@@ -223,7 +230,7 @@ void process_bk()
     }
 }
 
-// 0x4C8C04
+// 0x4B3454
 void GNW_add_input_buffer(int a1)
 {
     if (a1 == -1) {
@@ -261,7 +268,7 @@ void GNW_add_input_buffer(int a1)
     }
 }
 
-// 0x4C8C9C
+// 0x4B34E4
 static int get_input_buffer()
 {
     if (input_get == -1) {
@@ -287,14 +294,14 @@ static int get_input_buffer()
     return eventCode;
 }
 
-// 0x4C8D04
+// 0x4B354C
 void flush_input_buffer()
 {
     input_get = -1;
     input_put = 0;
 }
 
-// 0x4C8D1C
+// 0x4B3564
 void GNW_do_bk_process()
 {
     if (game_paused) {
@@ -324,7 +331,7 @@ void GNW_do_bk_process()
     }
 }
 
-// 0x4C8D74
+// 0x4B35BC
 void add_bk_process(BackgroundProcess* f)
 {
     FuncPtr fp;
@@ -347,7 +354,7 @@ void add_bk_process(BackgroundProcess* f)
     bk_list = fp;
 }
 
-// 0x4C8DC4
+// 0x4B360C
 void remove_bk_process(BackgroundProcess* f)
 {
     FuncPtr fp;
@@ -362,19 +369,19 @@ void remove_bk_process(BackgroundProcess* f)
     }
 }
 
-// 0x4C8DE4
+// 0x4B362C
 void enable_bk()
 {
     bk_disabled = false;
 }
 
-// 0x4C8DF0
+// 0x4B3638
 void disable_bk()
 {
     bk_disabled = true;
 }
 
-// 0x4C8DFC
+// 0x4B3644
 static void pause_game()
 {
     if (!game_paused) {
@@ -390,7 +397,7 @@ static void pause_game()
     }
 }
 
-// 0x4C8E38
+// 0x4B3680
 static int default_pause_window()
 {
     int windowWidth = text_width("Paused") + 32;
@@ -430,7 +437,7 @@ static int default_pause_window()
     return win;
 }
 
-// 0x4C8F34
+// 0x4B377C
 void register_pause(int new_pause_key, PauseWinFunc* new_pause_win_func)
 {
     pause_key = new_pause_key;
@@ -442,7 +449,7 @@ void register_pause(int new_pause_key, PauseWinFunc* new_pause_win_func)
     pause_win_func = new_pause_win_func;
 }
 
-// 0x4C8F4C
+// 0x4B3794
 void dump_screen()
 {
     ScreenBlitFunc* old_scr_blit;
@@ -479,14 +486,14 @@ void dump_screen()
     mem_free(screendump_buf);
 }
 
-// 0x4C8FF0
+// 0x4B3838
 static void buf_blit(unsigned char* src, unsigned int srcPitch, unsigned int a3, unsigned int srcX, unsigned int srcY, unsigned int width, unsigned int height, unsigned int destX, unsigned int destY)
 {
     int destWidth = scr_size.lrx - scr_size.ulx + 1;
     buf_to_buf(src + srcPitch * srcY + srcX, width, height, srcPitch, screendump_buf + destWidth * destY + destX, destWidth);
 }
 
-// 0x4C9048
+// 0x4B3890
 int default_screendump(int width, int height, unsigned char* data, unsigned char* palette)
 {
     char fileName[16];
@@ -605,7 +612,7 @@ int default_screendump(int width, int height, unsigned char* data, unsigned char
     return 0;
 }
 
-// 0x4C9358
+// 0x4B3BA0
 void register_screendump(int new_screendump_key, ScreenDumpFunc* new_screendump_func)
 {
     screendump_key = new_screendump_key;
@@ -617,14 +624,14 @@ void register_screendump(int new_screendump_key, ScreenDumpFunc* new_screendump_
     screendump_func = new_screendump_func;
 }
 
-// 0x4C9370
+// 0x4B3BB8
 TOCKS get_time()
 {
 #pragma warning(suppress : 28159)
     return GetTickCount();
 }
 
-// 0x4C937C
+// 0x4B3BC4
 void pause_for_tocks(unsigned int delay)
 {
     // NOTE: Uninline.
@@ -643,7 +650,7 @@ void pause_for_tocks(unsigned int delay)
     }
 }
 
-// 0x4C93B8
+// 0x4B3C00
 void block_for_tocks(unsigned int ms)
 {
 #pragma warning(suppress : 28159)
@@ -655,7 +662,7 @@ void block_for_tocks(unsigned int ms)
     } while (diff < ms);
 }
 
-// 0x4C93E0
+// 0x4B3C28
 unsigned int elapsed_time(unsigned int start)
 {
 #pragma warning(suppress : 28159)
@@ -665,7 +672,7 @@ unsigned int elapsed_time(unsigned int start)
     return elapsed_tocks(end, start);
 }
 
-// 0x4C9400
+// 0x4B3C48
 unsigned int elapsed_tocks(unsigned int end, unsigned int start)
 {
     if (start > end) {
@@ -675,13 +682,61 @@ unsigned int elapsed_tocks(unsigned int end, unsigned int start)
     }
 }
 
-// 0x4C9410
+// 0x4B3C58
 unsigned int get_bk_time()
 {
     return bk_process_time;
 }
 
-// 0x4C9490
+// 0x4B3C60
+void set_repeat_rate(unsigned int rate)
+{
+    GNW95_repeat_rate = rate;
+}
+
+// 0x4B3C68
+unsigned int get_repeat_rate()
+{
+    return GNW95_repeat_rate;
+}
+
+// 0x4B3C70
+void set_repeat_delay(unsigned int delay)
+{
+    GNW95_repeat_delay = delay;
+}
+
+// 0x4B3C78
+unsigned int get_repeat_delay()
+{
+    return GNW95_repeat_delay;
+}
+
+// 0x4B3C80
+void set_focus_func(FocusFunc* new_focus_func)
+{
+    focus_func = new_focus_func;
+}
+
+// 0x4B3C88
+FocusFunc* get_focus_func()
+{
+    return focus_func;
+}
+
+// 0x4B3C90
+void set_idle_func(IdleFunc* new_idle_func)
+{
+    idle_func = new_idle_func;
+}
+
+// 0x4B3C98
+IdleFunc* get_idle_func()
+{
+    return idle_func;
+}
+
+// 0x4B3CD8
 static void GNW95_build_key_map()
 {
     unsigned char* keys = GNW95_key_map;
@@ -1011,7 +1066,7 @@ static void GNW95_build_key_map()
     keys[DIK_APPS] = -1;
 }
 
-// 0x4C9BB4
+// 0x4B43FC
 void GNW95_hook_input(int hook)
 {
     GNW95_hook_keyboard(hook);
@@ -1029,18 +1084,16 @@ int GNW95_input_init()
     return 0;
 }
 
-// NOTE: Inlined.
-//
-// 0x4C9C24
+// 0x4B446C
 void GNW95_input_exit()
 {
     GNW95_hook_keyboard(0);
 }
 
-// 0x4C9C28
+// 0x4B4470
 static int GNW95_hook_keyboard(int hook)
 {
-    // 0x51E244
+    // 0x539D7C
     static bool hooked = false;
 
     if (hook == hooked) {
@@ -1070,7 +1123,7 @@ static int GNW95_hook_keyboard(int hook)
     return -1;
 }
 
-// 0x4C9C4C
+// 0x4B4494
 LRESULT CALLBACK GNW95_keyboard_hook(int nCode, WPARAM wParam, LPARAM lParam)
 {
     if (nCode >= 0) {
@@ -1096,7 +1149,7 @@ next:
     return CallNextHookEx(GNW95_keyboardHandle, nCode, wParam, lParam);
 }
 
-// 0x4C9CF0
+// 0x4B4538
 void GNW95_process_message()
 {
     if (GNW95_isActive && !kb_is_disabled()) {
@@ -1111,8 +1164,8 @@ void GNW95_process_message()
         for (int key = 0; key < 256; key++) {
             GNW95RepeatStruct* ptr = &(GNW95_key_time_stamps[key]);
             if (ptr->time != -1) {
-                int elapsedTime = ptr->time > now ? INT_MAX : now - ptr->time;
-                int delay = ptr->count == 0 ? GNW95_repeat_delay : GNW95_repeat_rate;
+                unsigned int elapsedTime = ptr->time > now ? INT_MAX : now - ptr->time;
+                unsigned int delay = ptr->count == 0 ? GNW95_repeat_delay : GNW95_repeat_rate;
                 if (elapsedTime > delay) {
                     data.code = key;
                     data.state = 1;
@@ -1134,7 +1187,7 @@ void GNW95_process_message()
     }
 }
 
-// 0x4C9DF0
+// 0x4B4638
 void GNW95_clear_time_stamps()
 {
     for (int index = 0; index < 256; index++) {
@@ -1143,7 +1196,7 @@ void GNW95_clear_time_stamps()
     }
 }
 
-// 0x4C9E14
+// 0x4B465C
 static void GNW95_process_key(dxinput_key_data* data)
 {
     unsigned char flag = 0;
@@ -1193,7 +1246,7 @@ static void GNW95_process_key(dxinput_key_data* data)
     }
 }
 
-// 0x4C9EEC
+// 0x4B4734
 void GNW95_lost_focus()
 {
     if (focus_func != NULL) {
