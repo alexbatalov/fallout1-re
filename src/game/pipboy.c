@@ -1690,7 +1690,6 @@ static void PipAlarm(int a1)
         int duration = a1 - 4;
         int minutes = 0;
         int hours = 0;
-        int v10 = 0;
 
         switch (duration) {
         case PIPBOY_REST_DURATION_TEN_MINUTES:
@@ -1708,7 +1707,7 @@ static void PipAlarm(int a1)
             TimedRest(duration - 1, 0, 0);
             break;
         case PIPBOY_REST_DURATION_UNTIL_MORNING:
-            ClacTime(&hours, &minutes, 8);
+            ClacTime(&hours, &minutes, 6);
             TimedRest(hours, minutes, 0);
             break;
         case PIPBOY_REST_DURATION_UNTIL_NOON:
