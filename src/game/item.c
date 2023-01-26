@@ -1228,57 +1228,28 @@ int item_w_try_reload(Object* critter, Object* weapon)
         return -1;
     }
 
-    if (weapon->pid != PROTO_ID_SOLAR_SCORCHER) {
-        int inventoryItemIndex = -1;
-        for (;;) {
-            Object* ammo = inven_find_type(critter, ITEM_TYPE_AMMO, &inventoryItemIndex);
-            if (ammo == NULL) {
-                break;
-            }
-
-            if (weapon->data.item.weapon.ammoTypePid == ammo->pid) {
-                if (item_w_can_reload(weapon, ammo) != 0) {
-                    int rc = item_w_reload(weapon, ammo);
-                    if (rc == 0) {
-                        obj_destroy(ammo);
-                    }
-
-                    if (rc == -1) {
-                        return -1;
-                    }
-
-                    return 0;
-                }
-            }
+    int inventoryItemIndex = -1;
+    while (1) {
+        Object* ammo = inven_find_type(critter, ITEM_TYPE_AMMO, &inventoryItemIndex);
+        if (ammo == NULL) {
+            break;
         }
 
-        inventoryItemIndex = -1;
-        for (;;) {
-            Object* ammo = inven_find_type(critter, ITEM_TYPE_AMMO, &inventoryItemIndex);
-            if (ammo == NULL) {
-                break;
+        if (item_w_can_reload(weapon, ammo)) {
+            int rc = item_w_reload(weapon, ammo);
+            if (rc == 0) {
+                obj_destroy(ammo);
             }
 
-            if (item_w_can_reload(weapon, ammo) != 0) {
-                int rc = item_w_reload(weapon, ammo);
-                if (rc == 0) {
-                    obj_destroy(ammo);
-                }
-
-                if (rc == -1) {
-                    return -1;
-                }
-
-                return 0;
+            if (rc == -1) {
+                return -1;
             }
+
+            return 0;
         }
     }
 
-    if (item_w_reload(weapon, NULL) != 0) {
-        return -1;
-    }
-
-    return 0;
+    return -1;
 }
 
 // Checks if weapon can be reloaded with the specified ammo.
@@ -1286,20 +1257,6 @@ int item_w_try_reload(Object* critter, Object* weapon)
 // 0x46AFB8
 bool item_w_can_reload(Object* weapon, Object* ammo)
 {
-    if (weapon->pid == PROTO_ID_SOLAR_SCORCHER) {
-        // Check light level to recharge solar scorcher.
-        if (light_get_ambient() > 62259) {
-            return true;
-        }
-
-        // There is not enough light to recharge this item.
-        MessageListItem messageListItem;
-        char* msg = getmsg(&item_message_file, &messageListItem, 500);
-        display_print(msg);
-
-        return false;
-    }
-
     if (ammo == NULL) {
         return false;
     }
@@ -1345,11 +1302,6 @@ int item_w_reload(Object* weapon, Object* ammo)
 
     // NOTE: Uninline.
     int ammoCapacity = item_w_max_ammo(weapon);
-
-    if (weapon->pid == PROTO_ID_SOLAR_SCORCHER) {
-        item_w_set_curr_ammo(weapon, ammoCapacity);
-        return 0;
-    }
 
     // NOTE: Uninline.
     int v10 = item_w_curr_ammo(ammo);
