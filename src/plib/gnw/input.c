@@ -17,7 +17,7 @@
 
 typedef struct GNW95RepeatStruct {
     // Time when appropriate key was pressed down or -1 if it's up.
-    TOCKS time;
+    unsigned int time;
     unsigned short count;
 } GNW95RepeatStruct;
 
@@ -625,7 +625,7 @@ void register_screendump(int new_screendump_key, ScreenDumpFunc* new_screendump_
 }
 
 // 0x4B3BB8
-TOCKS get_time()
+unsigned int get_time()
 {
 #pragma warning(suppress : 28159)
     return GetTickCount();
@@ -1158,8 +1158,8 @@ void GNW95_process_message()
             GNW95_process_key(&data);
         }
 
-        // NOTE: Uninline
-        TOCKS now = get_time();
+        // NOTE: Uninline.
+        unsigned int now = get_time();
 
         for (int key = 0; key < 256; key++) {
             GNW95RepeatStruct* ptr = &(GNW95_key_time_stamps[key]);

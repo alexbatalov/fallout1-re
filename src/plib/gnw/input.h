@@ -9,8 +9,6 @@
 #include "plib/gnw/kb.h"
 #include "plib/gnw/mouse.h"
 
-typedef unsigned long TOCKS;
-
 typedef void(IdleFunc)();
 typedef void(FocusFunc)(int);
 typedef void(BackgroundProcess)();
@@ -33,7 +31,7 @@ void register_pause(int new_pause_key, PauseWinFunc* new_pause_win_func);
 void dump_screen();
 int default_screendump(int width, int height, unsigned char* data, unsigned char* palette);
 void register_screendump(int new_screendump_key, ScreenDumpFunc* new_screendump_func);
-TOCKS get_time();
+unsigned int get_time();
 void pause_for_tocks(unsigned int ms);
 void block_for_tocks(unsigned int ms);
 unsigned int elapsed_time(unsigned int a1);
