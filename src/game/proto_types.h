@@ -368,7 +368,7 @@ typedef struct SceneryProto {
     int sid; // sid
     int type; // type
     SceneryProtoData data;
-    int field_2C; // material
+    int material;
     int field_30; //
     unsigned char field_34;
 } SceneryProto;

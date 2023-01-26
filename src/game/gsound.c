@@ -1487,7 +1487,7 @@ char* gsnd_build_weapon_sfx_name(int effectType, Object* weapon, int hitMode, Ob
             break;
         case OBJ_TYPE_SCENERY:
             proto_ptr(target->pid, &proto);
-            material = proto->scenery.field_2C;
+            material = proto->scenery.material;
             break;
         case OBJ_TYPE_WALL:
             proto_ptr(target->pid, &proto);

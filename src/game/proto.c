@@ -35,14 +35,12 @@ static int proto_read_protoSubNode(Proto* buf, DB_FILE* stream);
 static int proto_write_item_data(ItemProtoData* item_data, int type, DB_FILE* stream);
 static int proto_write_scenery_data(SceneryProtoData* scenery_data, int type, DB_FILE* stream);
 static int proto_write_protoSubNode(Proto* buf, DB_FILE* stream);
-static void proto_remove_some_list(int type);
-static void proto_remove_list(int type);
 static int proto_new_id(int a1);
 
-// 0x51C18C
+// 0x50734C
 char cd_path_base[MAX_PATH];
 
-// 0x51C290
+// 0x507450
 static ProtoList protolists[11] = {
     { 0, 0, 0, 1 },
     { 0, 0, 0, 1 },
@@ -57,7 +55,7 @@ static ProtoList protolists[11] = {
     { 0, 0, 0, 0 },
 };
 
-// 0x51C340
+// 0x507500
 static const size_t proto_sizes[11] = {
     sizeof(ItemProto), // 0x84
     sizeof(CritterProto), // 19C
@@ -72,11 +70,10 @@ static const size_t proto_sizes[11] = {
     0,
 };
 
-// 0x51C36C
+// 0x50752C
 static int protos_been_initialized = 0;
 
-// obj_dude_proto
-// 0x51C370
+// 0x507530
 static CritterProto pc_proto = {
     0x1000000,
     -1,
@@ -98,13 +95,23 @@ static CritterProto pc_proto = {
     0,
 };
 
-// 0x51C534
+// 0x5076CC
+static int proto_blocking_list[9] = {
+    0x2000043,
+    0x2000080,
+    0x200008D,
+    0x2000158,
+    0x300026D,
+    0x300026E,
+    0x500000C,
+    0x5000005,
+    0x2000031,
+};
+
+// 0x5076F0
 char proto_path_base[] = "proto\\";
 
-// 0x664530
-char* mp_perk_code_strs[1 + PERK_COUNT];
-
-// 0x66470C
+// 0x662CA8
 char* mp_critter_stats_list[2 + STAT_COUNT];
 
 // Message list by object type
@@ -115,53 +122,54 @@ char* mp_critter_stats_list[2 + STAT_COUNT];
 // 4 - pro_tile.msg
 // 5 - pro_misc.msg
 //
-// 0x6647AC
+// 0x662D48
 MessageList proto_msg_files[6];
 
-// 0x6647DC
+// 0x662D78
 char* race_type_strs[RACE_TYPE_COUNT];
 
-// 0x6647E4
+// 0x662D80
 char* scenery_pro_type[SCENERY_TYPE_COUNT];
 
 // proto.msg
 //
-// 0x6647FC
+// 0x662D98
 MessageList proto_main_msg_file;
 
-// 0x664804
+// 0x662DA0
+char* cal_type_strs[CALIBER_TYPE_COUNT];
+
+// 0x662DD8
 char* item_pro_material[MATERIAL_TYPE_COUNT];
+
+// 0x662DF8
+char* mp_perk_code_strs[1 + PERK_COUNT];
 
 // "<None>" from proto.msg
 //
-// 0x664824
+// 0x662EFC
 char* proto_none_str;
 
-// 0x664828
+// 0x662F00
 char* body_type_strs[BODY_TYPE_COUNT];
 
-// 0x664834
+// 0x662F0C
 char* item_pro_type[ITEM_TYPE_COUNT];
 
-// 0x66484C
+// 0x662F28
 char* damage_code_strs[DAMAGE_TYPE_COUNT];
-
-// 0x66486C
-char* cal_type_strs[CALIBER_TYPE_COUNT];
 
 // Perk names.
 //
-// 0x6648B8
+// 0x662F44
 char** perk_code_strs;
 
 // Stat names.
 //
-// 0x6648BC
+// 0x662F48
 char** critter_stats_list;
 
-// NOTE: Inlined.
-//
-// 0x49E270
+// 0x48C87C
 void proto_make_path(char* path, int pid)
 {
     strcpy(path, cd_path_base);
@@ -173,7 +181,7 @@ void proto_make_path(char* path, int pid)
 
 // Append proto file name to proto_path from proto.lst.
 //
-// 0x49E758
+// 0x48CD64
 int proto_list_str(int pid, char* proto_path)
 {
     if (pid == -1) {
@@ -223,7 +231,13 @@ int proto_list_str(int pid, char* proto_path)
     return 0;
 }
 
-// 0x49E99C
+// 0x48CF90
+size_t proto_size(int type)
+{
+    return type >= 0 && type < OBJ_TYPE_COUNT ? proto_sizes[type] : 0;
+}
+
+// 0x48CFA8
 bool proto_action_can_use(int pid)
 {
     Proto* proto;
@@ -242,7 +256,7 @@ bool proto_action_can_use(int pid)
     return false;
 }
 
-// 0x49E9DC
+// 0x48CFE8
 bool proto_action_can_use_on(int pid)
 {
     Proto* proto;
@@ -261,7 +275,13 @@ bool proto_action_can_use_on(int pid)
     return false;
 }
 
-// 0x49EA24
+// 0x48D028
+bool proto_action_can_look_at(int pid)
+{
+    return 1;
+}
+
+// 0x48D030
 bool proto_action_can_talk_to(int pid)
 {
     Proto* proto;
@@ -282,7 +302,7 @@ bool proto_action_can_talk_to(int pid)
 
 // Likely returns true if item with given pid can be picked up.
 //
-// 0x49EA5C
+// 0x48D068
 int proto_action_can_pickup(int pid)
 {
     if (PID_TYPE(pid) != OBJ_TYPE_ITEM) {
@@ -301,7 +321,7 @@ int proto_action_can_pickup(int pid)
     return true;
 }
 
-// 0x49EAA4
+// 0x48D0B0
 static char* proto_get_msg_info(int pid, int message)
 {
     char* v1 = proto_none_str;
@@ -322,7 +342,7 @@ static char* proto_get_msg_info(int pid, int message)
     return v1;
 }
 
-// 0x49EAFC
+// 0x48D108
 char* proto_name(int pid)
 {
     if (pid == 0x1000000) {
@@ -332,13 +352,13 @@ char* proto_name(int pid)
     return proto_get_msg_info(pid, PROTOTYPE_MESSAGE_NAME);
 }
 
-// 0x49EB1C
+// 0x48D128
 char* proto_description(int pid)
 {
     return proto_get_msg_info(pid, PROTOTYPE_MESSAGE_DESCRIPTION);
 }
 
-// 0x49EDB4
+// 0x48D3C0
 int proto_critter_init(Proto* a1, int a2)
 {
     if (!protos_been_initialized) {
@@ -372,7 +392,7 @@ int proto_critter_init(Proto* a1, int a2)
     return 0;
 }
 
-// 0x49EEA4
+// 0x48D4A8
 void clear_pupdate_data(Object* obj)
 {
     // NOTE: Original code is slightly different. It uses loop to zero object
@@ -380,7 +400,7 @@ void clear_pupdate_data(Object* obj)
     memset(&(obj->data), 0, sizeof(obj->data));
 }
 
-// 0x49EEB8
+// 0x48D4BC
 static int proto_read_CombatData(CritterCombatData* data, DB_FILE* stream)
 {
     if (db_freadInt(stream, &(data->damageLastTurn)) == -1) return -1;
@@ -394,7 +414,7 @@ static int proto_read_CombatData(CritterCombatData* data, DB_FILE* stream)
     return 0;
 }
 
-// 0x49EF40
+// 0x48D544
 static int proto_write_CombatData(CritterCombatData* data, DB_FILE* stream)
 {
     if (db_fwriteInt(stream, data->damageLastTurn) == -1) return -1;
@@ -408,7 +428,7 @@ static int proto_write_CombatData(CritterCombatData* data, DB_FILE* stream)
     return 0;
 }
 
-// 0x49F004
+// 0x48D608
 int proto_read_protoUpdateData(Object* obj, DB_FILE* stream)
 {
     Proto* proto;
@@ -464,28 +484,18 @@ int proto_read_protoUpdateData(Object* obj, DB_FILE* stream)
                 if (db_freadInt(stream, &(obj->data.scenery.door.openFlags)) == -1) return -1;
                 break;
             case SCENERY_TYPE_STAIRS:
-                if (db_freadInt(stream, &(obj->data.scenery.stairs.destinationBuiltTile)) == -1) return -1;
                 if (db_freadInt(stream, &(obj->data.scenery.stairs.destinationMap)) == -1) return -1;
+                if (db_freadInt(stream, &(obj->data.scenery.stairs.destinationBuiltTile)) == -1) return -1;
                 break;
             case SCENERY_TYPE_ELEVATOR:
                 if (db_freadInt(stream, &(obj->data.scenery.elevator.type)) == -1) return -1;
                 if (db_freadInt(stream, &(obj->data.scenery.elevator.level)) == -1) return -1;
                 break;
             case SCENERY_TYPE_LADDER_UP:
-                if (map_data.version == 19) {
-                    if (db_freadInt(stream, &(obj->data.scenery.ladder.destinationBuiltTile)) == -1) return -1;
-                } else {
-                    if (db_freadInt(stream, &(obj->data.scenery.ladder.destinationMap)) == -1) return -1;
-                    if (db_freadInt(stream, &(obj->data.scenery.ladder.destinationBuiltTile)) == -1) return -1;
-                }
+                if (db_freadInt(stream, &(obj->data.scenery.ladder.destinationBuiltTile)) == -1) return -1;
                 break;
             case SCENERY_TYPE_LADDER_DOWN:
-                if (map_data.version == 19) {
-                    if (db_freadInt(stream, &(obj->data.scenery.ladder.destinationBuiltTile)) == -1) return -1;
-                } else {
-                    if (db_freadInt(stream, &(obj->data.scenery.ladder.destinationMap)) == -1) return -1;
-                    if (db_freadInt(stream, &(obj->data.scenery.ladder.destinationBuiltTile)) == -1) return -1;
-                }
+                if (db_freadInt(stream, &(obj->data.scenery.ladder.destinationBuiltTile)) == -1) return -1;
                 break;
             }
 
@@ -504,7 +514,7 @@ int proto_read_protoUpdateData(Object* obj, DB_FILE* stream)
     return 0;
 }
 
-// 0x49F428
+// 0x48D9B4
 int proto_write_protoUpdateData(Object* obj, DB_FILE* stream)
 {
     Proto* proto;
@@ -553,19 +563,17 @@ int proto_write_protoUpdateData(Object* obj, DB_FILE* stream)
                 if (db_fwriteInt(stream, data->scenery.door.openFlags) == -1) return -1;
                 break;
             case SCENERY_TYPE_STAIRS:
-                if (db_fwriteInt(stream, data->scenery.stairs.destinationBuiltTile) == -1) return -1;
                 if (db_fwriteInt(stream, data->scenery.stairs.destinationMap) == -1) return -1;
+                if (db_fwriteInt(stream, data->scenery.stairs.destinationBuiltTile) == -1) return -1;
                 break;
             case SCENERY_TYPE_ELEVATOR:
                 if (db_fwriteInt(stream, data->scenery.elevator.type) == -1) return -1;
                 if (db_fwriteInt(stream, data->scenery.elevator.level) == -1) return -1;
                 break;
             case SCENERY_TYPE_LADDER_UP:
-                if (db_fwriteInt(stream, data->scenery.ladder.destinationMap) == -1) return -1;
                 if (db_fwriteInt(stream, data->scenery.ladder.destinationBuiltTile) == -1) return -1;
                 break;
             case SCENERY_TYPE_LADDER_DOWN:
-                if (db_fwriteInt(stream, data->scenery.ladder.destinationMap) == -1) return -1;
                 if (db_fwriteInt(stream, data->scenery.ladder.destinationBuiltTile) == -1) return -1;
                 break;
             default:
@@ -588,7 +596,7 @@ int proto_write_protoUpdateData(Object* obj, DB_FILE* stream)
     return 0;
 }
 
-// 0x49F73C
+// 0x48DCA0
 int proto_update_gen(Object* obj)
 {
     Proto* proto;
@@ -633,8 +641,8 @@ int proto_update_gen(Object* obj)
             data->scenery.door.openFlags = proto->scenery.data.door.openFlags;
             break;
         case SCENERY_TYPE_STAIRS:
-            data->scenery.stairs.destinationBuiltTile = proto->scenery.data.stairs.field_0;
-            data->scenery.stairs.destinationMap = proto->scenery.data.stairs.field_4;
+            data->scenery.stairs.destinationMap = proto->scenery.data.stairs.field_0;
+            data->scenery.stairs.destinationBuiltTile = proto->scenery.data.stairs.field_4;
             break;
         case SCENERY_TYPE_ELEVATOR:
             data->scenery.elevator.type = proto->scenery.data.elevator.type;
@@ -642,7 +650,7 @@ int proto_update_gen(Object* obj)
             break;
         case SCENERY_TYPE_LADDER_UP:
         case SCENERY_TYPE_LADDER_DOWN:
-            data->scenery.ladder.destinationMap = proto->scenery.data.ladder.field_0;
+            data->scenery.ladder.destinationBuiltTile = proto->scenery.data.ladder.field_0;
             break;
         }
         break;
@@ -661,7 +669,7 @@ int proto_update_gen(Object* obj)
     return 0;
 }
 
-// 0x49F8A0
+// 0x48DDE4
 int proto_update_init(Object* obj)
 {
     if (!protos_been_initialized) {
@@ -676,9 +684,7 @@ int proto_update_init(Object* obj)
         return -1;
     }
 
-    for (int i = 0; i < 14; i++) {
-        obj->field_2C_array[i] = 0;
-    }
+    clear_pupdate_data(obj);
 
     if (PID_TYPE(obj->pid) != OBJ_TYPE_CRITTER) {
         return proto_update_gen(obj);
@@ -703,7 +709,7 @@ int proto_update_init(Object* obj)
     return 0;
 }
 
-// 0x49F984
+// 0x48DEC8
 int proto_dude_update_gender()
 {
     Proto* proto;
@@ -735,7 +741,7 @@ int proto_dude_update_gender()
     return 0;
 }
 
-// 0x49FA64
+// 0x48DF90
 int proto_dude_init(const char* path)
 {
     // 0x51C538
@@ -794,7 +800,7 @@ int proto_dude_init(const char* path)
     return 0;
 }
 
-// 0x49FFD8
+// 0x48E534
 int proto_data_member(int pid, int member, ProtoDataMemberValue* value)
 {
     Proto* proto;
@@ -852,11 +858,6 @@ int proto_data_member(int pid, int member, ProtoDataMemberValue* value)
         case ITEM_DATA_MEMBER_INVENTORY_FID:
             value->integerValue = proto->item.inventoryFid;
             break;
-        case ITEM_DATA_MEMBER_WEAPON_RANGE:
-            if (proto->item.type == ITEM_TYPE_WEAPON) {
-                value->integerValue = proto->item.data.weapon.maxRange1;
-            }
-            break;
         default:
             debug_printf("\n\tError: Unimp'd data member in member in proto_data_member!");
             break;
@@ -895,9 +896,6 @@ int proto_data_member(int pid, int member, ProtoDataMemberValue* value)
             break;
         case CRITTER_DATA_MEMBER_HEAD_FID:
             value->integerValue = proto->critter.headFid;
-            break;
-        case CRITTER_DATA_MEMBER_BODY_TYPE:
-            value->integerValue = proto->critter.data.bodyType;
             break;
         default:
             debug_printf("\n\tError: Unimp'd data member in member in proto_data_member!");
@@ -939,7 +937,7 @@ int proto_data_member(int pid, int member, ProtoDataMemberValue* value)
             value->integerValue = proto->scenery.type;
             break;
         case SCENERY_DATA_MEMBER_MATERIAL:
-            value->integerValue = proto->scenery.field_2C;
+            value->integerValue = proto->scenery.material;
             break;
         default:
             debug_printf("\n\tError: Unimp'd data member in member in proto_data_member!");
@@ -1027,29 +1025,12 @@ int proto_data_member(int pid, int member, ProtoDataMemberValue* value)
     return PROTO_DATA_MEMBER_TYPE_INT;
 }
 
-// 0x4A0390
+// 0x48E84C
 int proto_init()
 {
-    char* master_patches;
-    int len;
     MessageListItem messageListItem;
     char path[MAX_PATH];
     int i;
-
-    if (!config_get_string(&game_config, GAME_CONFIG_SYSTEM_KEY, GAME_CONFIG_MASTER_PATCHES_KEY, &master_patches)) {
-        return -1;
-    }
-
-    sprintf(path, "%s\\proto", master_patches);
-    len = strlen(path);
-
-    mkdir(path);
-
-    strcpy(path + len, "\\critters");
-    mkdir(path);
-
-    strcpy(path + len, "\\items");
-    mkdir(path);
 
     // TODO: Get rid of cast.
     proto_critter_init((Proto*)&pc_proto, 0x1000000);
@@ -1060,9 +1041,8 @@ int proto_init()
     obj_dude->pid = 0x1000000;
     obj_dude->sid = 1;
 
-    for (i = 0; i < 6; i++) {
-        proto_remove_list(i);
-    }
+    // NOTE: Uninline.
+    proto_remove_all();
 
     proto_header_load();
 
@@ -1159,11 +1139,9 @@ int proto_init()
     return 0;
 }
 
-// 0x4A0814
+// 0x48EC20
 void proto_reset()
 {
-    int i;
-
     // TODO: Get rid of cast.
     proto_critter_init((Proto*)&pc_proto, 0x1000000);
     pc_proto.pid = 0x1000000;
@@ -1173,9 +1151,8 @@ void proto_reset()
     obj_dude->sid = -1;
     obj_dude->flags &= ~OBJECT_FLAG_0xFC000;
 
-    for (i = 0; i < 6; i++) {
-        proto_remove_list(i);
-    }
+    // NOTE: Uninline.
+    proto_remove_all();
 
     proto_header_load();
 
@@ -1183,14 +1160,15 @@ void proto_reset()
     proto_dude_init("premade\\player.gcd");
 }
 
-// 0x4A0898
+// 0x48EC98
 void proto_exit()
 {
     int i;
 
-    for (i = 0; i < 6; i++) {
-        proto_remove_list(i);
-    }
+    // NOTE: Uninline.
+    proto_remove_all();
+
+    protos_been_initialized = 0;
 
     for (i = 0; i < 6; i++) {
         message_exit(&(proto_msg_files[i]));
@@ -1201,7 +1179,7 @@ void proto_exit()
 
 // Count .pro lines in .lst files.
 //
-// 0x4A08E0
+// 0x48ECD8
 int proto_header_load()
 {
     for (int index = 0; index < 6; index++) {
@@ -1244,7 +1222,7 @@ int proto_header_load()
     return 0;
 }
 
-// 0x4A0AEC
+// 0x48EEE4
 static int proto_read_item_data(ItemProtoData* item_data, int type, DB_FILE* stream)
 {
     switch (type) {
@@ -1320,7 +1298,7 @@ static int proto_read_item_data(ItemProtoData* item_data, int type, DB_FILE* str
     return 0;
 }
 
-// 0x4A0ED0
+// 0x48F2C8
 static int proto_read_scenery_data(SceneryProtoData* scenery_data, int type, DB_FILE* stream)
 {
     switch (type) {
@@ -1354,7 +1332,7 @@ static int proto_read_scenery_data(SceneryProtoData* scenery_data, int type, DB_
 }
 
 // read .pro file
-// 0x4A0FA0
+// 0x48F398
 static int proto_read_protoSubNode(Proto* proto, DB_FILE* stream)
 {
     if (db_freadInt(stream, &(proto->pid)) == -1) return -1;
@@ -1398,7 +1376,7 @@ static int proto_read_protoSubNode(Proto* proto, DB_FILE* stream)
         if (db_freadInt(stream, &(proto->scenery.extendedFlags)) == -1) return -1;
         if (db_freadInt(stream, &(proto->scenery.sid)) == -1) return -1;
         if (db_freadInt(stream, &(proto->scenery.type)) == -1) return -1;
-        if (db_freadInt(stream, &(proto->scenery.field_2C)) == -1) return -1;
+        if (db_freadInt(stream, &(proto->scenery.material)) == -1) return -1;
         if (db_freadByte(stream, &(proto->scenery.field_34)) == -1) return -1;
         if (proto_read_scenery_data(&(proto->scenery.data), proto->scenery.type, stream) == -1) return -1;
         return 0;
@@ -1430,7 +1408,7 @@ static int proto_read_protoSubNode(Proto* proto, DB_FILE* stream)
     return -1;
 }
 
-// 0x4A1390
+// 0x48F788
 static int proto_write_item_data(ItemProtoData* item_data, int type, DB_FILE* stream)
 {
     switch (type) {
@@ -1506,7 +1484,7 @@ static int proto_write_item_data(ItemProtoData* item_data, int type, DB_FILE* st
     return 0;
 }
 
-// 0x4A16E4
+// 0x48FADC
 static int proto_write_scenery_data(SceneryProtoData* scenery_data, int type, DB_FILE* stream)
 {
     switch (type) {
@@ -1539,7 +1517,7 @@ static int proto_write_scenery_data(SceneryProtoData* scenery_data, int type, DB
     return 0;
 }
 
-// 0x4A17B4
+// 0x48FBAC
 static int proto_write_protoSubNode(Proto* proto, DB_FILE* stream)
 {
     if (db_fwriteInt(stream, proto->pid) == -1) return -1;
@@ -1582,7 +1560,7 @@ static int proto_write_protoSubNode(Proto* proto, DB_FILE* stream)
         if (db_fwriteInt(stream, proto->scenery.extendedFlags) == -1) return -1;
         if (db_fwriteInt(stream, proto->scenery.sid) == -1) return -1;
         if (db_fwriteInt(stream, proto->scenery.type) == -1) return -1;
-        if (db_fwriteInt(stream, proto->scenery.field_2C) == -1) return -1;
+        if (db_fwriteInt(stream, proto->scenery.material) == -1) return -1;
         if (db_fwriteByte(stream, proto->scenery.field_34) == -1) return -1;
         if (proto_write_scenery_data(&(proto->scenery.data), proto->scenery.type, stream) == -1) return -1;
     case OBJ_TYPE_WALL:
@@ -1613,7 +1591,7 @@ static int proto_write_protoSubNode(Proto* proto, DB_FILE* stream)
     return -1;
 }
 
-// 0x4A1B30
+// 0x48FF28
 int proto_save_pid(int pid)
 {
     Proto* proto;
@@ -1639,7 +1617,7 @@ int proto_save_pid(int pid)
     return rc;
 }
 
-// 0x4A1C3C
+// 0x490034
 int proto_load_pid(int pid, Proto** protoPtr)
 {
     char path[MAX_PATH];
@@ -1671,7 +1649,7 @@ int proto_load_pid(int pid, Proto** protoPtr)
     return 0;
 }
 
-// 0x4A1D98
+// 0x490190
 int proto_find_free_subnode(int type, Proto** protoPtr)
 {
     size_t size = (type >= 0 && type < 11) ? proto_sizes[type] : 0;
@@ -1724,58 +1702,31 @@ int proto_find_free_subnode(int type, Proto** protoPtr)
     return 0;
 }
 
-// Evict top most proto cache block.
-//
-// 0x4A2040
-static void proto_remove_some_list(int type)
-{
-    ProtoList* protoList = &(protolists[type]);
-    ProtoListExtent* protoListExtent = protoList->head;
-    if (protoListExtent != NULL) {
-        protoList->length--;
-        protoList->head = protoListExtent->next;
-
-        for (int index = 0; index < protoListExtent->length; index++) {
-            mem_free(protoListExtent->proto[index]);
-        }
-
-        mem_free(protoListExtent);
-    }
-}
-
-// Clear proto cache of given type.
-//
-// 0x4A2094
-static void proto_remove_list(int type)
-{
-    ProtoList* protoList = &(protolists[type]);
-
-    ProtoListExtent* curr = protoList->head;
-    while (curr != NULL) {
-        ProtoListExtent* next = curr->next;
-        for (int index = 0; index < curr->length; index++) {
-            mem_free(curr->proto[index]);
-        }
-        mem_free(curr);
-        curr = next;
-    }
-
-    protoList->head = NULL;
-    protoList->tail = NULL;
-    protoList->length = 0;
-}
-
 // Clear all proto cache.
 //
-// 0x4A20F4
+// 0x490438
 void proto_remove_all()
 {
-    for (int index = 0; index < 6; index++) {
-        proto_remove_list(index);
+    for (int type = 0; type < 6; type++) {
+        ProtoList* protoList = &(protolists[type]);
+
+        ProtoListExtent* curr = protoList->head;
+        while (curr != NULL) {
+            ProtoListExtent* next = curr->next;
+            for (int index = 0; index < curr->length; index++) {
+                mem_free(curr->proto[index]);
+            }
+            mem_free(curr);
+            curr = next;
+        }
+
+        protoList->head = NULL;
+        protoList->tail = NULL;
+        protoList->length = 0;
     }
 }
 
-// 0x4A2108
+// 0x4904AC
 int proto_ptr(int pid, Proto** protoPtr)
 {
     *protoPtr = NULL;
@@ -1802,31 +1753,28 @@ int proto_ptr(int pid, Proto** protoPtr)
         protoListExtent = protoListExtent->next;
     }
 
-    if (protoList->head != NULL && protoList->tail != NULL) {
-        if (PROTO_LIST_EXTENT_SIZE * protoList->length - (PROTO_LIST_EXTENT_SIZE - protoList->tail->length) > PROTO_LIST_MAX_ENTRIES) {
-            proto_remove_some_list(PID_TYPE(pid));
-        }
-    }
-
     return proto_load_pid(pid, protoPtr);
 }
 
-// 0x4A21DC
-static int proto_new_id(int a1)
+// 0x490530
+static int proto_new_id(int type)
 {
-    int result = protolists[a1].max_entries_num;
-    protolists[a1].max_entries_num = result + 1;
-
-    return result;
+    return protolists[type].max_entries_num++;
 }
 
-// 0x4A2214
+// 0x49054C
+int proto_undo_new_id(int type)
+{
+    return protolists[type].max_entries_num--;
+}
+
+// 0x490568
 int proto_max_id(int a1)
 {
     return protolists[a1].max_entries_num;
 }
 
-// 0x4A22C0
+// 0x490614
 int ResetPlayer()
 {
     Proto* proto;

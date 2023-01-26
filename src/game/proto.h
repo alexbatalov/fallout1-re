@@ -25,7 +25,6 @@ typedef enum ItemDataMember {
     ITEM_DATA_MEMBER_WEIGHT = 13,
     ITEM_DATA_MEMBER_COST = 14,
     ITEM_DATA_MEMBER_INVENTORY_FID = 15,
-    ITEM_DATA_MEMBER_WEAPON_RANGE = 555,
 } ItemDataMember;
 
 typedef enum CritterDataMember {
@@ -40,7 +39,6 @@ typedef enum CritterDataMember {
     CRITTER_DATA_MEMBER_SID = 8,
     CRITTER_DATA_MEMBER_DATA = 9,
     CRITTER_DATA_MEMBER_HEAD_FID = 10,
-    CRITTER_DATA_MEMBER_BODY_TYPE = 11,
 } CritterDataMember;
 
 typedef enum SceneryDataMember {
@@ -117,8 +115,10 @@ extern char** critter_stats_list;
 
 void proto_make_path(char* path, int pid);
 int proto_list_str(int pid, char* proto_path);
+size_t proto_size(int type);
 bool proto_action_can_use(int pid);
 bool proto_action_can_use_on(int pid);
+bool proto_action_can_look_at(int pid);
 bool proto_action_can_talk_to(int pid);
 int proto_action_can_pickup(int pid);
 char* proto_name(int pid);
@@ -141,6 +141,7 @@ int proto_load_pid(int pid, Proto** out_proto);
 int proto_find_free_subnode(int type, Proto** out_ptr);
 void proto_remove_all();
 int proto_ptr(int pid, Proto** out_proto);
+int proto_undo_new_id(int type);
 int proto_max_id(int a1);
 int ResetPlayer();
 

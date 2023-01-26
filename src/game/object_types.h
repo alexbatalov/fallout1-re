@@ -209,7 +209,6 @@ typedef struct ElevatorSceneryData {
 } ElevatorSceneryData;
 
 typedef struct LadderSceneryData {
-    int destinationMap;
     int destinationBuiltTile;
 } LadderSceneryData;
 
