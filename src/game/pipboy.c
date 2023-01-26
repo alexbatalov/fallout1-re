@@ -2070,6 +2070,7 @@ static bool TimedRest(int hours, int minutes, int duration)
 
     pip_num(game_time_hour(), 4, PIPBOY_WINDOW_TIME_X, PIPBOY_WINDOW_TIME_Y);
     pip_date();
+    pip_note();
     win_draw(pip_win);
 
     gmouse_set_cursor(MOUSE_CURSOR_ARROW);
