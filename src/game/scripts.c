@@ -2444,6 +2444,8 @@ void scr_exec_map_update_scripts()
 
     scr_spatials_disable();
 
+    exec_script_proc(map_script_id, SCRIPT_PROC_MAP_UPDATE);
+
     for (script_type = 0; script_type < SCRIPT_TYPE_COUNT; script_type++) {
         script_list_extent = scriptlists[script_type].head;
         while (script_list_extent != NULL) {
