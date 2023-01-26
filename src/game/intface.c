@@ -1401,7 +1401,7 @@ int intface_toggle_item_state()
                 }
                 break;
             case INTERFACE_ITEM_ACTION_COUNT:
-                itemState->action = INTERFACE_ITEM_ACTION_PRIMARY;
+                itemState->action = INTERFACE_ITEM_ACTION_USE;
                 break;
             }
         }
