@@ -7,7 +7,7 @@
 
 static int compare(const void* a1, const void* a2);
 
-// 0x4AA250
+// 0x4980C0
 static int compare(const void* a1, const void* a2)
 {
     const char* v1 = *(const char**)a1;
@@ -15,7 +15,7 @@ static int compare(const void* a1, const void* a2)
     return strcmp(v1, v2);
 }
 
-// 0x4AA2A4
+// 0x498114
 char** getFileList(const char* pattern, int* fileNameListLengthPtr)
 {
     char** fileNameList;
@@ -30,7 +30,7 @@ char** getFileList(const char* pattern, int* fileNameListLengthPtr)
     return fileNameList;
 }
 
-// 0x4AA2DC
+// 0x49814C
 void freeFileList(char** fileList)
 {
     db_free_file_list(&fileList, NULL);
