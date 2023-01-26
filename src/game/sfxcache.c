@@ -43,7 +43,7 @@ static void sfxc_handle_destroy(int handle);
 static bool sfxc_handle_is_legal(int a1);
 static bool sfxc_mode_is_legal(int mode);
 static int sfxc_decode(int handle, void* buf, unsigned int size);
-static int sfxc_ad_reader(int handle, void* buf, unsigned int size);
+static int sfxc_ad_reader(void* stream, void* buf, unsigned int size);
 
 // 0x507A70
 static int sfxc_dlevel = INT_MAX;
@@ -484,29 +484,29 @@ static int sfxc_decode(int handle, void* buf, unsigned int size)
     SoundEffect* soundEffect = &(sfxc_handle_list[handle]);
     soundEffect->dataPosition = 0;
 
-    int v1;
-    int v2;
-    int v3;
-    SoundDecoder* soundDecoder = soundDecoderInit(sfxc_ad_reader, handle, &v1, &v2, &v3);
+    int channels;
+    int sampleRate;
+    int sampleCount;
+    AudioDecoder* ad = Create_AudioDecoder(sfxc_ad_reader, (void*)handle, &channels, &sampleRate, &sampleCount);
 
     if (soundEffect->position != 0) {
         void* temp = mem_malloc(soundEffect->position);
         if (temp == NULL) {
-            soundDecoderFree(soundDecoder);
+            AudioDecoder_Close(ad);
             return -1;
         }
 
-        size_t bytesRead = soundDecoderDecode(soundDecoder, temp, soundEffect->position);
+        size_t bytesRead = AudioDecoder_Read(ad, temp, soundEffect->position);
         mem_free(temp);
 
         if (bytesRead != soundEffect->position) {
-            soundDecoderFree(soundDecoder);
+            AudioDecoder_Close(ad);
             return -1;
         }
     }
 
-    size_t bytesRead = soundDecoderDecode(soundDecoder, buf, size);
-    soundDecoderFree(soundDecoder);
+    size_t bytesRead = AudioDecoder_Read(ad, buf, size);
+    AudioDecoder_Close(ad);
 
     if (bytesRead != size) {
         return -1;
@@ -516,12 +516,13 @@ static int sfxc_decode(int handle, void* buf, unsigned int size)
 }
 
 // 0x4978F0
-static int sfxc_ad_reader(int handle, void* buf, unsigned int size)
+static int sfxc_ad_reader(void* stream, void* buf, unsigned int size)
 {
     if (size == 0) {
         return 0;
     }
 
+    int handle = (int)stream;
     SoundEffect* soundEffect = &(sfxc_handle_list[handle]);
 
     unsigned int bytesToRead = soundEffect->fileSize - soundEffect->dataPosition;

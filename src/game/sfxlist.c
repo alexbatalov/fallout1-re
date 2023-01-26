@@ -24,7 +24,7 @@ static int sfxl_copy_names(char** fileNameList);
 static int sfxl_get_sizes();
 static int sfxl_sort_by_name();
 static int sfxl_compare_by_name(const void* a1, const void* a2);
-static int sfxl_ad_reader(int fileHandle, void* buf, unsigned int size);
+static int sfxl_ad_reader(void* stream, void* buf, unsigned int size);
 
 // 0x507A8C
 static bool sfxl_initialized = false;
@@ -366,12 +366,12 @@ static int sfxl_get_sizes()
                     return 1;
                 }
 
-                int v1;
-                int v2;
-                int v3;
-                SoundDecoder* soundDecoder = soundDecoderInit(sfxl_ad_reader, (int)stream, &v1, &v2, &v3);
-                entry->dataSize = 2 * v3;
-                soundDecoderFree(soundDecoder);
+                int channels;
+                int sampleRate;
+                int sampleCount;
+                AudioDecoder* ad = Create_AudioDecoder(sfxl_ad_reader, stream, &channels, &sampleRate, &sampleCount);
+                entry->dataSize = 2 * sampleCount;
+                AudioDecoder_Close(ad);
                 db_fclose(stream);
             }
             break;
@@ -405,7 +405,7 @@ static int sfxl_compare_by_name(const void* a1, const void* a2)
 }
 
 // 0x4980A0
-static int sfxl_ad_reader(int fileHandle, void* buf, unsigned int size)
+static int sfxl_ad_reader(void* stream, void* buf, unsigned int size)
 {
-    return db_fread(buf, 1, size, (DB_FILE*)fileHandle);
+    return db_fread(buf, 1, size, (DB_FILE*)stream);
 }

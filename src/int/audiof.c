@@ -17,8 +17,8 @@ typedef enum AudioFileFlags {
 
 typedef struct AudioFile {
     int flags;
-    int fileHandle;
-    SoundDecoder* soundDecoder;
+    FILE* stream;
+    AudioDecoder* audioDecoder;
     int fileSize;
     int sampleRate;
     int channels;
@@ -28,7 +28,7 @@ typedef struct AudioFile {
 static_assert(sizeof(AudioFile) == 28, "wrong size");
 
 static bool defaultCompressionFunc(char* filePath);
-static int decodeRead(int fileHandle, void* buffer, unsigned int size);
+static int decodeRead(void* stream, void* buffer, unsigned int size);
 
 // 0x4FEC04
 static AudioFileQueryCompressedFunc* queryCompressedFunc = defaultCompressionFunc;
@@ -51,9 +51,9 @@ static bool defaultCompressionFunc(char* filePath)
 }
 
 // 0x419EB0
-static int decodeRead(int fileHandle, void* buffer, unsigned int size)
+static int decodeRead(void* stream, void* buffer, unsigned int size)
 {
-    return fread(buffer, 1, size, (FILE*)fileHandle);
+    return fread(buffer, 1, size, (FILE*)stream);
 }
 
 // 0x419ECC
@@ -113,11 +113,11 @@ int audiofOpen(const char* fname, int flags)
 
     AudioFile* audioFile = &(audiof[index]);
     audioFile->flags = AUDIO_FILE_IN_USE;
-    audioFile->fileHandle = (int)stream;
+    audioFile->stream = stream;
 
     if (compression == 2) {
         audioFile->flags |= AUDIO_FILE_COMPRESSED;
-        audioFile->soundDecoder = soundDecoderInit(decodeRead, audioFile->fileHandle, &(audioFile->channels), &(audioFile->sampleRate), &(audioFile->fileSize));
+        audioFile->audioDecoder = Create_AudioDecoder(decodeRead, audioFile->stream, &(audioFile->channels), &(audioFile->sampleRate), &(audioFile->fileSize));
         audioFile->fileSize *= 2;
     } else {
         audioFile->fileSize = filelength(fileno(stream));
@@ -132,10 +132,10 @@ int audiofOpen(const char* fname, int flags)
 int audiofCloseFile(int fileHandle)
 {
     AudioFile* audioFile = &(audiof[fileHandle - 1]);
-    fclose((FILE*)audioFile->fileHandle);
+    fclose((FILE*)audioFile->stream);
 
     if ((audioFile->flags & AUDIO_FILE_COMPRESSED) != 0) {
-        soundDecoderFree(audioFile->soundDecoder);
+        AudioDecoder_Close(audioFile->audioDecoder);
     }
 
     // Reset audio file (which also resets it's use flag).
@@ -152,9 +152,9 @@ int audiofRead(int fileHandle, void* buffer, unsigned int size)
 
     int bytesRead;
     if ((ptr->flags & AUDIO_FILE_COMPRESSED) != 0) {
-        bytesRead = soundDecoderDecode(ptr->soundDecoder, buffer, size);
+        bytesRead = AudioDecoder_Read(ptr->audioDecoder, buffer, size);
     } else {
-        bytesRead = fread(buffer, 1, size, (FILE*)ptr->fileHandle);
+        bytesRead = fread(buffer, 1, size, ptr->stream);
     }
 
     ptr->position += bytesRead;
@@ -187,11 +187,9 @@ long audiofSeek(int fileHandle, long offset, int origin)
 
     if ((audioFile->flags & AUDIO_FILE_COMPRESSED) != 0) {
         if (a4 <= audioFile->position) {
-            soundDecoderFree(audioFile->soundDecoder);
-
-            fseek((FILE*)audioFile->fileHandle, 0, 0);
-
-            audioFile->soundDecoder = soundDecoderInit(decodeRead, audioFile->fileHandle, &(audioFile->channels), &(audioFile->sampleRate), &(audioFile->fileSize));
+            AudioDecoder_Close(audioFile->audioDecoder);
+            fseek(audioFile->stream, 0, SEEK_SET);
+            audioFile->audioDecoder = Create_AudioDecoder(decodeRead, audioFile->stream, &(audioFile->channels), &(audioFile->sampleRate), &(audioFile->fileSize));
             audioFile->fileSize *= 2;
             audioFile->position = 0;
 
@@ -221,7 +219,7 @@ long audiofSeek(int fileHandle, long offset, int origin)
         return audioFile->position;
     }
 
-    return fseek((FILE*)audioFile->fileHandle, offset, origin);
+    return fseek(audioFile->stream, offset, origin);
 }
 
 // 0x41A360

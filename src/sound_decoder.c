@@ -8,115 +8,192 @@
 #include "sound_decoder.h"
 
 #include <limits.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
-static inline void soundDecoderRequireBits(SoundDecoder* soundDecoder, int bits);
-static inline void soundDecoderDropBits(SoundDecoder* soundDecoder, int bits);
+#define SOUND_DECODER_IN_BUFFER_SIZE 512
 
-// 0x51E328
-int gSoundDecodersCount = 0;
+typedef int (*ReadBandFunc)(AudioDecoder* ad, int subband, int n);
 
-// 0x51E32C
-bool _inited_ = false;
+typedef struct _byte_reader {
+    AudioDecoderReadFunc* read;
+    void* data;
+    unsigned char* buf;
+    size_t buf_size;
+    unsigned char* buf_ptr;
+    int buf_cnt;
+} byte_reader;
 
-// 0x51E330
-DECODINGPROC _ReadBand_tbl[32] = {
-    _ReadBand_Fmt0_,
-    _ReadBand_Fail_,
-    _ReadBand_Fail_,
-    _ReadBand_Fmt3_16_,
-    _ReadBand_Fmt3_16_,
-    _ReadBand_Fmt3_16_,
-    _ReadBand_Fmt3_16_,
-    _ReadBand_Fmt3_16_,
-    _ReadBand_Fmt3_16_,
-    _ReadBand_Fmt3_16_,
-    _ReadBand_Fmt3_16_,
-    _ReadBand_Fmt3_16_,
-    _ReadBand_Fmt3_16_,
-    _ReadBand_Fmt3_16_,
-    _ReadBand_Fmt3_16_,
-    _ReadBand_Fmt3_16_,
-    _ReadBand_Fmt3_16_,
-    _ReadBand_Fmt17_,
-    _ReadBand_Fmt18_,
-    _ReadBand_Fmt19_,
-    _ReadBand_Fmt20_,
-    _ReadBand_Fmt21_,
-    _ReadBand_Fmt22_,
-    _ReadBand_Fmt23_,
-    _ReadBand_Fmt24_,
-    _ReadBand_Fail_,
-    _ReadBand_Fmt26_,
-    _ReadBand_Fmt27_,
-    _ReadBand_Fail_,
-    _ReadBand_Fmt29_,
-    _ReadBand_Fail_,
-    _ReadBand_Fail_,
+typedef struct _bit_reader {
+    byte_reader bytes;
+    int data;
+    int bitcnt;
+} bit_reader;
+
+typedef struct _AudioDecoder {
+    bit_reader bits;
+    int levels;
+    int subbands;
+    int samples_per_subband;
+    int total_samples;
+    unsigned char* prev_samples;
+    unsigned char* samples;
+    int block_samples_per_subband;
+    int block_total_samples;
+    int channels;
+    int rate;
+    int file_cnt;
+    unsigned char* samp_ptr;
+    int samp_cnt;
+} AudioDecoder;
+
+#if _WIN32
+static_assert(sizeof(AudioDecoder) == 84, "wrong size");
+#endif
+
+static bool bytes_init(byte_reader* bytes, AudioDecoderReadFunc* read, void* data);
+static unsigned char ByteReaderFill(byte_reader* bytes);
+static bool bits_init(bit_reader* bits, AudioDecoderReadFunc* read, void* data);
+static void init_pack_tables();
+static int ReadBand_Fail(AudioDecoder* ad, int subband, int n);
+static int ReadBand_Fmt0(AudioDecoder* ad, int subband, int n);
+static int ReadBand_Fmt3_16(AudioDecoder* ad, int subband, int n);
+static int ReadBand_Fmt17(AudioDecoder* ad, int subband, int n);
+static int ReadBand_Fmt18(AudioDecoder* ad, int subband, int n);
+static int ReadBand_Fmt19(AudioDecoder* ad, int subband, int n);
+static int ReadBand_Fmt20(AudioDecoder* ad, int subband, int n);
+static int ReadBand_Fmt21(AudioDecoder* ad, int subband, int n);
+static int ReadBand_Fmt22(AudioDecoder* ad, int subband, int n);
+static int ReadBand_Fmt23(AudioDecoder* ad, int subband, int n);
+static int ReadBand_Fmt24(AudioDecoder* ad, int subband, int n);
+static int ReadBand_Fmt26(AudioDecoder* ad, int subband, int n);
+static int ReadBand_Fmt27(AudioDecoder* ad, int subband, int n);
+static int ReadBand_Fmt29(AudioDecoder* ad, int subband, int n);
+static int ReadBands(AudioDecoder* ad);
+static void untransform_subband0(unsigned char* prv, unsigned char* buf, int step, int count);
+static void untransform_subband(unsigned char* prv, unsigned char* buf, int step, int count);
+static void untransform_all(AudioDecoder* ad);
+
+static inline void requireBits(AudioDecoder* ad, int n);
+static inline void dropBits(AudioDecoder* ad, int n);
+
+// 0x539E58
+static int AudioDecoder_cnt = 0;
+
+// 0x539E60
+static ReadBandFunc ReadBand_tbl[32] = {
+    ReadBand_Fmt0,
+    ReadBand_Fail,
+    ReadBand_Fail,
+    ReadBand_Fmt3_16,
+    ReadBand_Fmt3_16,
+    ReadBand_Fmt3_16,
+    ReadBand_Fmt3_16,
+    ReadBand_Fmt3_16,
+    ReadBand_Fmt3_16,
+    ReadBand_Fmt3_16,
+    ReadBand_Fmt3_16,
+    ReadBand_Fmt3_16,
+    ReadBand_Fmt3_16,
+    ReadBand_Fmt3_16,
+    ReadBand_Fmt3_16,
+    ReadBand_Fmt3_16,
+    ReadBand_Fmt3_16,
+    ReadBand_Fmt17,
+    ReadBand_Fmt18,
+    ReadBand_Fmt19,
+    ReadBand_Fmt20,
+    ReadBand_Fmt21,
+    ReadBand_Fmt22,
+    ReadBand_Fmt23,
+    ReadBand_Fmt24,
+    ReadBand_Fail,
+    ReadBand_Fmt26,
+    ReadBand_Fmt27,
+    ReadBand_Fail,
+    ReadBand_Fmt29,
+    ReadBand_Fail,
+    ReadBand_Fail,
 };
 
-// 0x6AD960
-unsigned char _pack11_2[128];
+// 0x6730D0
+static unsigned char pack11_2[128];
 
-// 0x6AD9E0
-unsigned char _pack3_3[32];
+// 0x673150
+static unsigned char pack3_3[32];
 
-// 0x6ADA00
-unsigned short word_6ADA00[128];
+// 0x673170
+static unsigned short pack5_3[128];
 
-// 0x6ADB00
-unsigned char* _AudioDecoder_scale0;
+// 0x673270
+static unsigned char* AudioDecoder_scale0;
 
-// 0x6ADB04
-unsigned char* _AudioDecoder_scale_tbl;
+// 0x673274
+static unsigned char* AudioDecoder_scale_tbl;
 
 // 0x4D3BB0
-bool soundDecoderPrepare(SoundDecoder* soundDecoder, SoundDecoderReadProc* readProc, int fileHandle)
+static bool bytes_init(byte_reader* bytes, AudioDecoderReadFunc* read, void* data)
 {
-    soundDecoder->readProc = readProc;
-    soundDecoder->fd = fileHandle;
+    bytes->read = read;
+    bytes->data = data;
 
-    soundDecoder->bufferIn = (unsigned char*)malloc(SOUND_DECODER_IN_BUFFER_SIZE);
-    if (soundDecoder->bufferIn == NULL) {
+    bytes->buf = (unsigned char*)malloc(SOUND_DECODER_IN_BUFFER_SIZE);
+    if (bytes->buf == NULL) {
         return false;
     }
 
-    soundDecoder->bufferInSize = SOUND_DECODER_IN_BUFFER_SIZE;
-    soundDecoder->remainingInSize = 0;
+    bytes->buf_size = SOUND_DECODER_IN_BUFFER_SIZE;
+    bytes->buf_cnt = 0;
 
     return true;
 }
 
 // 0x4D3BE0
-unsigned char soundDecoderReadNextChunk(SoundDecoder* soundDecoder)
+static unsigned char ByteReaderFill(byte_reader* bytes)
 {
-    soundDecoder->remainingInSize = soundDecoder->readProc(soundDecoder->fd, soundDecoder->bufferIn, soundDecoder->bufferInSize);
-    if (soundDecoder->remainingInSize == 0) {
-        memset(soundDecoder->bufferIn, 0, soundDecoder->bufferInSize);
-        soundDecoder->remainingInSize = soundDecoder->bufferInSize;
+    bytes->buf_cnt = bytes->read(bytes->data, bytes->buf, bytes->buf_size);
+    if (bytes->buf_cnt == 0) {
+        memset(bytes->buf, 0, bytes->buf_size);
+        bytes->buf_cnt = bytes->buf_size;
     }
 
-    soundDecoder->nextIn = soundDecoder->bufferIn;
-    soundDecoder->remainingInSize -= 1;
-    return *soundDecoder->nextIn++;
+    bytes->buf_ptr = bytes->buf;
+    bytes->buf_cnt -= 1;
+    return *bytes->buf_ptr++;
 }
 
-// 0x4D3C78
-void _init_pack_tables()
+// 0x4BE4C0
+static bool bits_init(bit_reader* bits, AudioDecoderReadFunc* read, void* data)
 {
+    if (!bytes_init(&(bits->bytes), read, data)) {
+        return false;
+    }
+
+    bits->data = 0;
+    bits->bitcnt = 0;
+
+    return true;
+}
+
+// 0x4BE508
+static void init_pack_tables()
+{
+    // 0x539E5C
+    static bool inited = false;
+
     int i;
     int j;
     int m;
 
-    if (_inited_) {
+    if (inited) {
         return;
     }
 
     for (i = 0; i < 3; i++) {
         for (j = 0; j < 3; j++) {
             for (m = 0; m < 3; m++) {
-                _pack3_3[i + j * 3 + m * 9] = i + j * 4 + m * 16;
+                pack3_3[i + j * 3 + m * 9] = i + j * 4 + m * 16;
             }
         }
     }
@@ -124,64 +201,64 @@ void _init_pack_tables()
     for (i = 0; i < 5; i++) {
         for (j = 0; j < 5; j++) {
             for (m = 0; m < 5; m++) {
-                word_6ADA00[i + j * 5 + m * 25] = i + j * 8 + m * 64;
+                pack5_3[i + j * 5 + m * 25] = i + j * 8 + m * 64;
             }
         }
     }
 
     for (i = 0; i < 11; i++) {
         for (j = 0; j < 11; j++) {
-            _pack11_2[i + j * 11] = i + j * 16;
+            pack11_2[i + j * 11] = i + j * 16;
         }
     }
 
-    _inited_ = true;
+    inited = true;
 }
 
-// 0x4D3D9C
-int _ReadBand_Fail_(SoundDecoder* soundDecoder, int offset, int bits)
+// 0x4BE62C
+static int ReadBand_Fail(AudioDecoder* ad, int subband, int n)
 {
     return 0;
 }
 
-// 0x4D3DA0
-int _ReadBand_Fmt0_(SoundDecoder* soundDecoder, int offset, int bits)
+// 0x4BE630
+static int ReadBand_Fmt0(AudioDecoder* ad, int subband, int n)
 {
-    int* p = (int*)soundDecoder->field_34;
-    p += offset;
+    int* p = (int*)ad->samples;
+    p += subband;
 
-    int i = soundDecoder->field_28;
+    int i = ad->samples_per_subband;
     while (i != 0) {
         *p = 0;
-        p += soundDecoder->field_24;
+        p += ad->subbands;
         i--;
     }
 
     return 1;
 }
 
-// 0x4D3DC8
-int _ReadBand_Fmt3_16_(SoundDecoder* soundDecoder, int offset, int bits)
+// 0x4BE658
+static int ReadBand_Fmt3_16(AudioDecoder* ad, int subband, int n)
 {
     int value;
     int v14;
 
-    short* base = (short*)_AudioDecoder_scale0;
-    base += UINT_MAX << (bits - 1);
+    short* base = (short*)AudioDecoder_scale0;
+    base += UINT_MAX << (n - 1);
 
-    int* p = (int*)soundDecoder->field_34;
-    p += offset;
+    int* p = (int*)ad->samples;
+    p += subband;
 
-    v14 = (1 << bits) - 1;
+    v14 = (1 << n) - 1;
 
-    int i = soundDecoder->field_28;
+    int i = ad->samples_per_subband;
     while (i != 0) {
-        soundDecoderRequireBits(soundDecoder, bits);
-        value = soundDecoder->hold;
-        soundDecoderDropBits(soundDecoder, bits);
+        requireBits(ad, n);
+        value = ad->bits.data;
+        dropBits(ad, n);
 
         *p = base[v14 & value];
-        p += soundDecoder->field_24;
+        p += ad->subbands;
 
         i--;
     }
@@ -189,46 +266,46 @@ int _ReadBand_Fmt3_16_(SoundDecoder* soundDecoder, int offset, int bits)
     return 1;
 }
 
-// 0x4D3E90
-int _ReadBand_Fmt17_(SoundDecoder* soundDecoder, int offset, int bits)
+// 0x4BE720
+static int ReadBand_Fmt17(AudioDecoder* ad, int subband, int n)
 {
-    short* base = (short*)_AudioDecoder_scale0;
+    short* base = (short*)AudioDecoder_scale0;
 
-    int* p = (int*)soundDecoder->field_34;
-    p += offset;
+    int* p = (int*)ad->samples;
+    p += subband;
 
-    int i = soundDecoder->field_28;
+    int i = ad->samples_per_subband;
     while (i != 0) {
-        soundDecoderRequireBits(soundDecoder, 3);
+        requireBits(ad, 3);
 
-        int value = soundDecoder->hold & 0xFF;
+        int value = ad->bits.data & 0xFF;
         if (!(value & 0x01)) {
-            soundDecoderDropBits(soundDecoder, 1);
+            dropBits(ad, 1);
 
             *p = 0;
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 break;
             }
 
             *p = 0;
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 break;
             }
         } else if (!(value & 0x02)) {
-            soundDecoderDropBits(soundDecoder, 2);
+            dropBits(ad, 2);
 
             *p = 0;
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 break;
             }
         } else {
-            soundDecoderDropBits(soundDecoder, 3);
+            dropBits(ad, 3);
 
             if (value & 0x04) {
                 *p = base[1];
@@ -236,37 +313,37 @@ int _ReadBand_Fmt17_(SoundDecoder* soundDecoder, int offset, int bits)
                 *p = base[-1];
             }
 
-            p += soundDecoder->field_24;
+            p += ad->subbands;
             i--;
         }
     }
     return 1;
 }
 
-// 0x4D3F98
-int _ReadBand_Fmt18_(SoundDecoder* soundDecoder, int offset, int bits)
+// 0x4BE828
+static int ReadBand_Fmt18(AudioDecoder* ad, int subband, int n)
 {
-    short* base = (short*)_AudioDecoder_scale0;
+    short* base = (short*)AudioDecoder_scale0;
 
-    int* p = (int*)soundDecoder->field_34;
-    p += offset;
+    int* p = (int*)ad->samples;
+    p += subband;
 
-    int i = soundDecoder->field_28;
+    int i = ad->samples_per_subband;
     while (i != 0) {
-        soundDecoderRequireBits(soundDecoder, 2);
+        requireBits(ad, 2);
 
-        int value = soundDecoder->hold;
+        int value = ad->bits.data;
         if (!(value & 0x01)) {
-            soundDecoderDropBits(soundDecoder, 1);
+            dropBits(ad, 1);
 
             *p = 0;
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 return 1;
             }
         } else {
-            soundDecoderDropBits(soundDecoder, 2);
+            dropBits(ad, 2);
 
             if (value & 0x02) {
                 *p = base[1];
@@ -274,44 +351,44 @@ int _ReadBand_Fmt18_(SoundDecoder* soundDecoder, int offset, int bits)
                 *p = base[-1];
             }
 
-            p += soundDecoder->field_24;
+            p += ad->subbands;
             i--;
         }
     }
     return 1;
 }
 
-// 0x4D4068
-int _ReadBand_Fmt19_(SoundDecoder* soundDecoder, int offset, int bits)
+// 0x4BE8F8
+static int ReadBand_Fmt19(AudioDecoder* ad, int subband, int n)
 {
-    short* base = (short*)_AudioDecoder_scale0;
+    short* base = (short*)AudioDecoder_scale0;
     base -= 1;
 
-    int* p = (int*)soundDecoder->field_34;
-    p += offset;
+    int* p = (int*)ad->samples;
+    p += subband;
 
-    int i = soundDecoder->field_28;
+    int i = ad->samples_per_subband;
     while (i != 0) {
-        soundDecoderRequireBits(soundDecoder, 5);
-        int value = soundDecoder->hold & 0x1F;
-        soundDecoderDropBits(soundDecoder, 5);
+        requireBits(ad, 5);
+        int value = ad->bits.data & 0x1F;
+        dropBits(ad, 5);
 
-        value = _pack3_3[value];
+        value = pack3_3[value];
 
         *p = base[value & 0x03];
-        p += soundDecoder->field_24;
+        p += ad->subbands;
         if (--i == 0) {
             break;
         }
 
         *p = base[(value >> 2) & 0x03];
-        p += soundDecoder->field_24;
+        p += ad->subbands;
         if (--i == 0) {
             break;
         }
 
         *p = base[value >> 4];
-        p += soundDecoder->field_24;
+        p += ad->subbands;
 
         i--;
     }
@@ -319,46 +396,46 @@ int _ReadBand_Fmt19_(SoundDecoder* soundDecoder, int offset, int bits)
     return 1;
 }
 
-// 0x4D4158
-int _ReadBand_Fmt20_(SoundDecoder* soundDecoder, int offset, int bits)
+// 0x4BE9E8
+static int ReadBand_Fmt20(AudioDecoder* ad, int subband, int n)
 {
-    short* base = (short*)_AudioDecoder_scale0;
+    short* base = (short*)AudioDecoder_scale0;
 
-    int* p = (int*)soundDecoder->field_34;
-    p += offset;
+    int* p = (int*)ad->samples;
+    p += subband;
 
-    int i = soundDecoder->field_28;
+    int i = ad->samples_per_subband;
     while (i != 0) {
-        soundDecoderRequireBits(soundDecoder, 4);
+        requireBits(ad, 4);
 
-        int value = soundDecoder->hold & 0xFF;
+        int value = ad->bits.data & 0xFF;
         if (!(value & 0x01)) {
-            soundDecoderDropBits(soundDecoder, 1);
+            dropBits(ad, 1);
 
             *p = 0;
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 break;
             }
 
             *p = 0;
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 break;
             }
         } else if (!(value & 0x02)) {
-            soundDecoderDropBits(soundDecoder, 2);
+            dropBits(ad, 2);
 
             *p = 0;
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 break;
             }
         } else {
-            soundDecoderDropBits(soundDecoder, 4);
+            dropBits(ad, 4);
 
             if (value & 0x08) {
                 if (value & 0x04) {
@@ -374,7 +451,7 @@ int _ReadBand_Fmt20_(SoundDecoder* soundDecoder, int offset, int bits)
                 }
             }
 
-            p += soundDecoder->field_24;
+            p += ad->subbands;
             i--;
         }
     }
@@ -382,30 +459,30 @@ int _ReadBand_Fmt20_(SoundDecoder* soundDecoder, int offset, int bits)
     return 1;
 }
 
-// 0x4D4254
-int _ReadBand_Fmt21_(SoundDecoder* soundDecoder, int offset, int bits)
+// 0x4BEAE4
+static int ReadBand_Fmt21(AudioDecoder* ad, int subband, int n)
 {
-    short* base = (short*)_AudioDecoder_scale0;
+    short* base = (short*)AudioDecoder_scale0;
 
-    int* p = (int*)soundDecoder->field_34;
-    p += offset;
+    int* p = (int*)ad->samples;
+    p += subband;
 
-    int i = soundDecoder->field_28;
+    int i = ad->samples_per_subband;
     while (i != 0) {
-        soundDecoderRequireBits(soundDecoder, 3);
+        requireBits(ad, 3);
 
-        int value = soundDecoder->hold & 0xFF;
+        int value = ad->bits.data & 0xFF;
         if (!(value & 0x01)) {
-            soundDecoderDropBits(soundDecoder, 1);
+            dropBits(ad, 1);
 
             *p = 0;
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 break;
             }
         } else {
-            soundDecoderDropBits(soundDecoder, 3);
+            dropBits(ad, 3);
 
             if (value & 0x04) {
                 if (value & 0x02) {
@@ -421,7 +498,7 @@ int _ReadBand_Fmt21_(SoundDecoder* soundDecoder, int offset, int bits)
                 }
             }
 
-            p += soundDecoder->field_24;
+            p += ad->subbands;
             i--;
         }
     }
@@ -429,39 +506,39 @@ int _ReadBand_Fmt21_(SoundDecoder* soundDecoder, int offset, int bits)
     return 1;
 }
 
-// 0x4D4338
-int _ReadBand_Fmt22_(SoundDecoder* soundDecoder, int offset, int bits)
+// 0x4BEBC8
+static int ReadBand_Fmt22(AudioDecoder* ad, int subband, int n)
 {
-    short* base = (short*)_AudioDecoder_scale0;
+    short* base = (short*)AudioDecoder_scale0;
     base -= 2;
 
-    int* p = (int*)soundDecoder->field_34;
-    p += offset;
+    int* p = (int*)ad->samples;
+    p += subband;
 
-    int i = soundDecoder->field_28;
+    int i = ad->samples_per_subband;
     while (i != 0) {
-        soundDecoderRequireBits(soundDecoder, 7);
-        int value = soundDecoder->hold & 0x7F;
-        soundDecoderDropBits(soundDecoder, 7);
+        requireBits(ad, 7);
+        int value = ad->bits.data & 0x7F;
+        dropBits(ad, 7);
 
-        value = word_6ADA00[value];
+        value = pack5_3[value];
 
         *p = base[value & 7];
-        p += soundDecoder->field_24;
+        p += ad->subbands;
 
         if (--i == 0) {
             break;
         }
 
         *p = base[((value >> 3) & 7)];
-        p += soundDecoder->field_24;
+        p += ad->subbands;
 
         if (--i == 0) {
             break;
         }
 
         *p = base[value >> 6];
-        p += soundDecoder->field_24;
+        p += ad->subbands;
 
         if (--i == 0) {
             break;
@@ -471,46 +548,46 @@ int _ReadBand_Fmt22_(SoundDecoder* soundDecoder, int offset, int bits)
     return 1;
 }
 
-// 0x4D4434
-int _ReadBand_Fmt23_(SoundDecoder* soundDecoder, int offset, int bits)
+// 0x4BECC4
+static int ReadBand_Fmt23(AudioDecoder* ad, int subband, int n)
 {
-    short* base = (short*)_AudioDecoder_scale0;
+    short* base = (short*)AudioDecoder_scale0;
 
-    int* p = (int*)soundDecoder->field_34;
-    p += offset;
+    int* p = (int*)ad->samples;
+    p += subband;
 
-    int i = soundDecoder->field_28;
+    int i = ad->samples_per_subband;
     while (i != 0) {
-        soundDecoderRequireBits(soundDecoder, 5);
+        requireBits(ad, 5);
 
-        int value = soundDecoder->hold;
+        int value = ad->bits.data;
         if (!(value & 0x01)) {
-            soundDecoderDropBits(soundDecoder, 1);
+            dropBits(ad, 1);
 
             *p = 0;
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 break;
             }
 
             *p = 0;
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 break;
             }
         } else if (!(value & 0x02)) {
-            soundDecoderDropBits(soundDecoder, 2);
+            dropBits(ad, 2);
 
             *p = 0;
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 break;
             }
         } else if (!(value & 0x04)) {
-            soundDecoderDropBits(soundDecoder, 4);
+            dropBits(ad, 4);
 
             if (value & 0x08) {
                 *p = base[1];
@@ -518,12 +595,12 @@ int _ReadBand_Fmt23_(SoundDecoder* soundDecoder, int offset, int bits)
                 *p = base[-1];
             }
 
-            p += soundDecoder->field_24;
+            p += ad->subbands;
             if (--i == 0) {
                 break;
             }
         } else {
-            soundDecoderDropBits(soundDecoder, 5);
+            dropBits(ad, 5);
 
             value >>= 3;
             value &= 0x03;
@@ -532,7 +609,7 @@ int _ReadBand_Fmt23_(SoundDecoder* soundDecoder, int offset, int bits)
             }
 
             *p = base[value - 3];
-            p += soundDecoder->field_24;
+            p += ad->subbands;
             i--;
         }
     }
@@ -540,30 +617,30 @@ int _ReadBand_Fmt23_(SoundDecoder* soundDecoder, int offset, int bits)
     return 1;
 }
 
-// 0x4D4584
-int _ReadBand_Fmt24_(SoundDecoder* soundDecoder, int offset, int bits)
+// 0x4BEE14
+static int ReadBand_Fmt24(AudioDecoder* ad, int subband, int n)
 {
-    short* base = (short*)_AudioDecoder_scale0;
+    short* base = (short*)AudioDecoder_scale0;
 
-    int* p = (int*)soundDecoder->field_34;
-    p += offset;
+    int* p = (int*)ad->samples;
+    p += subband;
 
-    int i = soundDecoder->field_28;
+    int i = ad->samples_per_subband;
     while (i != 0) {
-        soundDecoderRequireBits(soundDecoder, 4);
+        requireBits(ad, 4);
 
-        int value = soundDecoder->hold & 0xFF;
+        int value = ad->bits.data & 0xFF;
         if (!(value & 0x01)) {
-            soundDecoderDropBits(soundDecoder, 1);
+            dropBits(ad, 1);
 
             *p = 0;
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 break;
             }
         } else if (!(value & 0x02)) {
-            soundDecoderDropBits(soundDecoder, 3);
+            dropBits(ad, 3);
 
             if (value & 0x04) {
                 *p = base[1];
@@ -571,13 +648,13 @@ int _ReadBand_Fmt24_(SoundDecoder* soundDecoder, int offset, int bits)
                 *p = base[-1];
             }
 
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 break;
             }
         } else {
-            soundDecoderDropBits(soundDecoder, 4);
+            dropBits(ad, 4);
 
             value >>= 2;
             value &= 0x03;
@@ -586,7 +663,7 @@ int _ReadBand_Fmt24_(SoundDecoder* soundDecoder, int offset, int bits)
             }
 
             *p = base[value - 3];
-            p += soundDecoder->field_24;
+            p += ad->subbands;
             i--;
         }
     }
@@ -594,46 +671,46 @@ int _ReadBand_Fmt24_(SoundDecoder* soundDecoder, int offset, int bits)
     return 1;
 }
 
-// 0x4D4698
-int _ReadBand_Fmt26_(SoundDecoder* soundDecoder, int offset, int bits)
+// 0x4BEF28
+static int ReadBand_Fmt26(AudioDecoder* ad, int subband, int n)
 {
-    short* base = (short*)_AudioDecoder_scale0;
+    short* base = (short*)AudioDecoder_scale0;
 
-    int* p = (int*)soundDecoder->field_34;
-    p += offset;
+    int* p = (int*)ad->samples;
+    p += subband;
 
-    int i = soundDecoder->field_28;
+    int i = ad->samples_per_subband;
     while (i != 0) {
-        soundDecoderRequireBits(soundDecoder, 5);
+        requireBits(ad, 5);
 
-        int value = soundDecoder->hold;
+        int value = ad->bits.data;
         if (!(value & 0x01)) {
-            soundDecoderDropBits(soundDecoder, 1);
+            dropBits(ad, 1);
 
             *p = 0;
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 break;
             }
 
             *p = 0;
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 break;
             }
         } else if (!(value & 0x02)) {
-            soundDecoderDropBits(soundDecoder, 2);
+            dropBits(ad, 2);
 
             *p = 0;
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 break;
             }
         } else {
-            soundDecoderDropBits(soundDecoder, 5);
+            dropBits(ad, 5);
 
             value >>= 2;
             value &= 0x07;
@@ -642,7 +719,7 @@ int _ReadBand_Fmt26_(SoundDecoder* soundDecoder, int offset, int bits)
             }
 
             *p = base[value - 4];
-            p += soundDecoder->field_24;
+            p += ad->subbands;
             i--;
         }
     }
@@ -650,30 +727,30 @@ int _ReadBand_Fmt26_(SoundDecoder* soundDecoder, int offset, int bits)
     return 1;
 }
 
-// 0x4D47A4
-int _ReadBand_Fmt27_(SoundDecoder* soundDecoder, int offset, int bits)
+// 0x4BF034
+static int ReadBand_Fmt27(AudioDecoder* ad, int subband, int n)
 {
-    short* base = (short*)_AudioDecoder_scale0;
+    short* base = (short*)AudioDecoder_scale0;
 
-    int* p = (int*)soundDecoder->field_34;
-    p += offset;
+    int* p = (int*)ad->samples;
+    p += subband;
 
-    int i = soundDecoder->field_28;
+    int i = ad->samples_per_subband;
     while (i != 0) {
-        soundDecoderRequireBits(soundDecoder, 4);
+        requireBits(ad, 4);
 
-        int value = soundDecoder->hold;
+        int value = ad->bits.data;
         if (!(value & 0x01)) {
-            soundDecoderDropBits(soundDecoder, 1);
+            dropBits(ad, 1);
 
             *p = 0;
-            p += soundDecoder->field_24;
+            p += ad->subbands;
 
             if (--i == 0) {
                 break;
             }
         } else {
-            soundDecoderDropBits(soundDecoder, 4);
+            dropBits(ad, 4);
 
             value >>= 1;
             value &= 0x07;
@@ -682,7 +759,7 @@ int _ReadBand_Fmt27_(SoundDecoder* soundDecoder, int offset, int bits)
             }
 
             *p = base[value - 4];
-            p += soundDecoder->field_24;
+            p += ad->subbands;
             i--;
         }
     }
@@ -690,30 +767,30 @@ int _ReadBand_Fmt27_(SoundDecoder* soundDecoder, int offset, int bits)
     return 1;
 }
 
-// 0x4D4870
-int _ReadBand_Fmt29_(SoundDecoder* soundDecoder, int offset, int bits)
+// 0x4BF100
+static int ReadBand_Fmt29(AudioDecoder* ad, int subband, int n)
 {
-    short* base = (short*)_AudioDecoder_scale0;
+    short* base = (short*)AudioDecoder_scale0;
 
-    int* p = (int*)soundDecoder->field_34;
-    p += offset;
+    int* p = (int*)ad->samples;
+    p += subband;
 
-    int i = soundDecoder->field_28;
+    int i = ad->samples_per_subband;
     while (i != 0) {
-        soundDecoderRequireBits(soundDecoder, 7);
-        int value = soundDecoder->hold & 0x7F;
-        soundDecoderDropBits(soundDecoder, 7);
+        requireBits(ad, 7);
+        int value = ad->bits.data & 0x7F;
+        dropBits(ad, 7);
 
-        value = _pack11_2[value];
+        value = pack11_2[value];
 
         *p = base[(value & 0x0F) - 5];
-        p += soundDecoder->field_24;
+        p += ad->subbands;
         if (--i == 0) {
             break;
         }
 
         *p = base[(value >> 4) - 5];
-        p += soundDecoder->field_24;
+        p += ad->subbands;
         if (--i == 0) {
             break;
         }
@@ -722,8 +799,8 @@ int _ReadBand_Fmt29_(SoundDecoder* soundDecoder, int offset, int bits)
     return 1;
 }
 
-// 0x4D493C
-int _ReadBands_(SoundDecoder* soundDecoder)
+// 0x4BF1CC
+static int ReadBands(AudioDecoder* ad)
 {
     int v9;
     int v15;
@@ -731,19 +808,19 @@ int _ReadBands_(SoundDecoder* soundDecoder)
     int v19;
     unsigned short* v18;
     int v21;
-    DECODINGPROC fn;
+    ReadBandFunc fn;
 
-    soundDecoderRequireBits(soundDecoder, 4);
-    v9 = soundDecoder->hold & 0xF;
-    soundDecoderDropBits(soundDecoder, 4);
+    requireBits(ad, 4);
+    v9 = ad->bits.data & 0xF;
+    dropBits(ad, 4);
 
-    soundDecoderRequireBits(soundDecoder, 16);
-    v15 = soundDecoder->hold & 0xFFFF;
-    soundDecoderDropBits(soundDecoder, 16);
+    requireBits(ad, 16);
+    v15 = ad->bits.data & 0xFFFF;
+    dropBits(ad, 16);
 
     v17 = 1 << v9;
 
-    v18 = (unsigned short*)_AudioDecoder_scale0;
+    v18 = (unsigned short*)AudioDecoder_scale0;
     v19 = v17;
     v21 = 0;
     while (v19--) {
@@ -751,7 +828,7 @@ int _ReadBands_(SoundDecoder* soundDecoder)
         v21 += v15;
     }
 
-    v18 = (unsigned short*)_AudioDecoder_scale0;
+    v18 = (unsigned short*)AudioDecoder_scale0;
     v19 = v17;
     v21 = -v15;
     while (v19--) {
@@ -760,48 +837,48 @@ int _ReadBands_(SoundDecoder* soundDecoder)
         v21 -= v15;
     }
 
-    _init_pack_tables();
+    init_pack_tables();
 
-    for (int index = 0; index < soundDecoder->field_24; index++) {
-        soundDecoderRequireBits(soundDecoder, 5);
-        int bits = soundDecoder->hold & 0x1F;
-        soundDecoderDropBits(soundDecoder, 5);
+    for (int index = 0; index < ad->subbands; index++) {
+        requireBits(ad, 5);
+        int bits = ad->bits.data & 0x1F;
+        dropBits(ad, 5);
 
-        fn = _ReadBand_tbl[bits];
-        if (!fn(soundDecoder, index, bits)) {
+        fn = ReadBand_tbl[bits];
+        if (!fn(ad, index, bits)) {
             return 0;
         }
     }
     return 1;
 }
 
-// 0x4D4ADC
-void _untransform_subband0(unsigned char* a1, unsigned char* a2, int a3, int a4)
+// 0x4BF36C
+static void untransform_subband0(unsigned char* prv, unsigned char* buf, int step, int count)
 {
     short* p;
 
-    p = (short*)a2;
-    p += a3;
+    p = (short*)buf;
+    p += step;
 
-    if (a4 == 2) {
-        int i = a3;
+    if (count == 2) {
+        int i = step;
         while (i != 0) {
             i--;
         }
-    } else if (a4 == 4) {
-        int v31 = a3;
-        int* v9 = (int*)a2;
-        v9 += a3;
+    } else if (count == 4) {
+        int v31 = step;
+        int* v9 = (int*)buf;
+        v9 += step;
 
-        int* v10 = (int*)a2;
-        v10 += a3 * 3;
+        int* v10 = (int*)buf;
+        v10 += step * 3;
 
-        int* v11 = (int*)a2;
-        v11 += a3 * 2;
+        int* v11 = (int*)buf;
+        v11 += step * 2;
 
         while (v31 != 0) {
-            int* v33 = (int*)a2;
-            int* v34 = (int*)a1;
+            int* v33 = (int*)buf;
+            int* v34 = (int*)prv;
 
             int v12 = *v34 >> 16;
 
@@ -821,60 +898,60 @@ void _untransform_subband0(unsigned char* a1, unsigned char* a2, int a3, int a4)
             v11++;
             v9++;
 
-            *(short*)a1 = v15 & 0xFFFF;
-            *(short*)(a1 + 2) = v16 & 0xFFFF;
+            *(short*)prv = v15 & 0xFFFF;
+            *(short*)(prv + 2) = v16 & 0xFFFF;
 
-            a1 += 4;
-            a2 += 4;
+            prv += 4;
+            buf += 4;
 
             v31--;
         }
     } else {
-        int v30 = a4 >> 1;
-        int v32 = a3;
+        int v30 = count >> 1;
+        int v32 = step;
         while (v32 != 0) {
-            int* v19 = (int*)a2;
+            int* v19 = (int*)buf;
 
             int v20;
             int v22;
             if (v30 & 0x01) {
 
             } else {
-                v20 = (int)*(short*)a1;
-                v22 = *(int*)a1 >> 16;
+                v20 = (int)*(short*)prv;
+                v22 = *(int*)prv >> 16;
             }
 
             int v23 = v30 >> 1;
             while (--v23 != -1) {
                 int v24 = *v19;
                 *v19 += 2 * v22 + v20;
-                v19 += a3;
+                v19 += step;
 
                 int v26 = *v19;
                 *v19 = 2 * v24 - v22 - v26;
-                v19 += a3;
+                v19 += step;
 
                 v20 = *v19;
                 *v19 += 2 * v26 + v24;
-                v19 += a3;
+                v19 += step;
 
                 v22 = *v19;
                 *v19 = 2 * v20 - v26 - v22;
-                v19 += a3;
+                v19 += step;
             }
 
-            *(short*)a1 = v20 & 0xFFFF;
-            *(short*)(a1 + 2) = v22 & 0xFFFF;
+            *(short*)prv = v20 & 0xFFFF;
+            *(short*)(prv + 2) = v22 & 0xFFFF;
 
-            a1 += 4;
-            a2 += 4;
+            prv += 4;
+            buf += 4;
             v32--;
         }
     }
 }
 
-// 0x4D4D1C
-void _untransform_subband(unsigned char* a1, unsigned char* a2, int a3, int a4)
+// 0x4BF5AC
+static void untransform_subband(unsigned char* prv, unsigned char* buf, int step, int count)
 {
     int v13;
     int* v14;
@@ -889,19 +966,19 @@ void _untransform_subband(unsigned char* a1, unsigned char* a2, int a3, int a4)
     int* v20;
     int* v21;
 
-    v26 = (int*)a1;
-    v25 = (int*)a2;
+    v26 = (int*)prv;
+    v25 = (int*)buf;
 
-    if (a4 == 4) {
-        unsigned char* v4 = a2 + 4 * a3;
-        unsigned char* v5 = a2 + 3 * a3;
-        unsigned char* v6 = a2 + 2 * a3;
+    if (count == 4) {
+        unsigned char* v4 = buf + 4 * step;
+        unsigned char* v5 = buf + 3 * step;
+        unsigned char* v6 = buf + 2 * step;
         int v7;
         int v8;
         int v9;
         int v10;
         int v11;
-        while (a3--) {
+        while (step--) {
             v7 = *(unsigned int*)(v26 + 4);
             v8 = *(unsigned int*)v25;
             *(unsigned int*)v25 = *(unsigned int*)v26 + 2 * v7;
@@ -926,10 +1003,10 @@ void _untransform_subband(unsigned char* a1, unsigned char* a2, int a3, int a4)
             v25 += 1;
         }
     } else {
-        int v24 = a3;
+        int v24 = step;
 
         while (v24 != 0) {
-            v13 = a4 >> 2;
+            v13 = count >> 2;
             v14 = v25;
             v15 = v26[0];
             v16 = v26[1];
@@ -938,19 +1015,19 @@ void _untransform_subband(unsigned char* a1, unsigned char* a2, int a3, int a4)
                 v17 = *v14;
                 *v14 += 2 * v16 + v15;
 
-                v18 = v14 + a3;
+                v18 = v14 + step;
                 v19 = *v18;
                 *v18 = 2 * v17 - v16 - v19;
 
-                v20 = v18 + a3;
+                v20 = v18 + step;
                 v15 = *v20;
                 *v20 += 2 * v19 + v17;
 
-                v21 = v20 + a3;
+                v21 = v20 + step;
                 v16 = *v21;
                 *v21 = 2 * v15 - v19 - v16;
 
-                v14 = v21 + a3;
+                v14 = v21 + step;
             }
 
             v26[0] = v15;
@@ -964,8 +1041,8 @@ void _untransform_subband(unsigned char* a1, unsigned char* a2, int a3, int a4)
     }
 }
 
-// 0x4D4E80
-void _untransform_all(SoundDecoder* soundDecoder)
+// 0x4BF710
+static void untransform_all(AudioDecoder* ad)
 {
     int v8;
     unsigned char* ptr;
@@ -975,23 +1052,23 @@ void _untransform_all(SoundDecoder* soundDecoder)
     int v6;
     int* v5;
 
-    if (!soundDecoder->field_20) {
+    if (!ad->levels) {
         return;
     }
 
-    ptr = soundDecoder->field_34;
+    ptr = ad->samples;
 
-    v8 = soundDecoder->field_28;
+    v8 = ad->samples_per_subband;
     while (v8 > 0) {
-        v3 = soundDecoder->field_24 >> 1;
-        v4 = soundDecoder->field_38;
+        v3 = ad->subbands >> 1;
+        v4 = ad->block_samples_per_subband;
         if (v4 > v8) {
             v4 = v8;
         }
 
         v4 *= 2;
 
-        _untransform_subband0(soundDecoder->field_30, ptr, v3, v4);
+        untransform_subband0(ad->prev_samples, ptr, v3, v4);
 
         v5 = (int*)ptr;
         for (v6 = 0; v6 < v4; v6++) {
@@ -999,234 +1076,239 @@ void _untransform_all(SoundDecoder* soundDecoder)
             v5 += v3;
         }
 
-        j = 4 * v3 + soundDecoder->field_30;
+        j = 4 * v3 + ad->prev_samples;
         while (1) {
             v3 >>= 1;
             v4 *= 2;
             if (v3 == 0) {
                 break;
             }
-            _untransform_subband(j, ptr, v3, v4);
+            untransform_subband(j, ptr, v3, v4);
             j += 8 * v3;
         }
 
-        ptr += soundDecoder->field_3C * 4;
-        v8 -= soundDecoder->field_38;
+        ptr += ad->block_total_samples * 4;
+        v8 -= ad->block_samples_per_subband;
     }
 }
 
-// 0x4D4FA0
-size_t soundDecoderDecode(SoundDecoder* soundDecoder, void* buffer, size_t size)
+// 0x4BF7E8
+static bool AudioDecoder_fill(AudioDecoder* ad)
+{
+    if (!ReadBands(ad)) {
+        return false;
+    }
+
+    untransform_all(ad);
+
+    ad->file_cnt -= ad->total_samples;
+    ad->samp_ptr = ad->samples;
+    ad->samp_cnt = ad->total_samples;
+
+    if (ad->file_cnt < 0) {
+        ad->samp_cnt += ad->file_cnt;
+        ad->file_cnt = 0;
+    }
+
+    return true;
+}
+
+// 0x4BF830
+size_t AudioDecoder_Read(AudioDecoder* ad, void* buffer, size_t size)
 {
     unsigned char* dest;
-    unsigned char* v5;
-    int v6;
-    int v4;
+    unsigned char* samp_ptr;
+    int samp_cnt;
 
     dest = (unsigned char*)buffer;
-    v4 = 0;
-    v5 = soundDecoder->field_4C;
-    v6 = soundDecoder->field_50;
+    samp_ptr = ad->samp_ptr;
+    samp_cnt = ad->samp_cnt;
 
     size_t bytesRead;
     for (bytesRead = 0; bytesRead < size; bytesRead += 2) {
-        if (!v6) {
-            if (!soundDecoder->field_48) {
+        if (samp_cnt == 0) {
+            if (ad->file_cnt == 0) {
                 break;
             }
 
-            if (!_ReadBands_(soundDecoder)) {
+            if (!AudioDecoder_fill(ad)) {
                 break;
             }
 
-            _untransform_all(soundDecoder);
-
-            soundDecoder->field_48 -= soundDecoder->field_2C;
-            soundDecoder->field_4C = soundDecoder->field_34;
-            soundDecoder->field_50 = soundDecoder->field_2C;
-
-            if (soundDecoder->field_48 < 0) {
-                soundDecoder->field_50 += soundDecoder->field_48;
-                soundDecoder->field_48 = 0;
-            }
-
-            v5 = soundDecoder->field_4C;
-            v6 = soundDecoder->field_50;
+            samp_ptr = ad->samp_ptr;
+            samp_cnt = ad->samp_cnt;
         }
 
-        int v13 = *(int*)v5;
-        v5 += 4;
-        *(unsigned short*)(dest + bytesRead) = (v13 >> soundDecoder->field_20) & 0xFFFF;
-        v6--;
+        int v13 = *(int*)samp_ptr;
+        samp_ptr += 4;
+        *(unsigned short*)(dest + bytesRead) = (v13 >> ad->levels) & 0xFFFF;
+        samp_cnt--;
     }
 
-    soundDecoder->field_4C = v5;
-    soundDecoder->field_50 = v6;
+    ad->samp_ptr = samp_ptr;
+    ad->samp_cnt = samp_cnt;
 
     return bytesRead;
 }
 
-// 0x4D5048
-void soundDecoderFree(SoundDecoder* soundDecoder)
+// 0x4BF8D8
+void AudioDecoder_Close(AudioDecoder* ad)
 {
-    if (soundDecoder->bufferIn != NULL) {
-        free(soundDecoder->bufferIn);
+    if (ad->bits.bytes.buf != NULL) {
+        free(ad->bits.bytes.buf);
     }
 
-    if (soundDecoder->field_30 != NULL) {
-        free(soundDecoder->field_30);
+    if (ad->prev_samples != NULL) {
+        free(ad->prev_samples);
     }
 
-    if (soundDecoder->field_34 != NULL) {
-        free(soundDecoder->field_34);
+    if (ad->samples != NULL) {
+        free(ad->samples);
     }
 
-    free(soundDecoder);
+    free(ad);
 
-    gSoundDecodersCount--;
+    AudioDecoder_cnt--;
 
-    if (gSoundDecodersCount == 0) {
-        if (_AudioDecoder_scale_tbl != NULL) {
-            free(_AudioDecoder_scale_tbl);
-            _AudioDecoder_scale_tbl = NULL;
+    if (AudioDecoder_cnt == 0) {
+        if (AudioDecoder_scale_tbl != NULL) {
+            free(AudioDecoder_scale_tbl);
+            AudioDecoder_scale_tbl = NULL;
         }
     }
 }
 
-// 0x4D50A8
-SoundDecoder* soundDecoderInit(SoundDecoderReadProc* readProc, int fileHandle, int* out_a3, int* out_a4, int* out_a5)
+// 0x4BF938
+AudioDecoder* Create_AudioDecoder(AudioDecoderReadFunc* reader, void* data, int* channels, int* sampleRate, int* sampleCount)
 {
     int v14;
     int v20;
     int v73;
 
-    SoundDecoder* soundDecoder = (SoundDecoder*)malloc(sizeof(*soundDecoder));
-    if (soundDecoder == NULL) {
+    AudioDecoder* ad = (AudioDecoder*)malloc(sizeof(*ad));
+    if (ad == NULL) {
         return NULL;
     }
 
-    memset(soundDecoder, 0, sizeof(*soundDecoder));
+    memset(ad, 0, sizeof(*ad));
 
-    gSoundDecodersCount++;
+    AudioDecoder_cnt++;
 
-    if (!soundDecoderPrepare(soundDecoder, readProc, fileHandle)) {
+    if (!bits_init(&(ad->bits), reader, data)) {
         goto L66;
     }
 
-    soundDecoder->hold = 0;
-    soundDecoder->bits = 0;
-
-    soundDecoderRequireBits(soundDecoder, 24);
-    v14 = soundDecoder->hold;
-    soundDecoderDropBits(soundDecoder, 24);
+    requireBits(ad, 24);
+    v14 = ad->bits.data;
+    dropBits(ad, 24);
 
     if ((v14 & 0xFFFFFF) != 0x32897) {
         goto L66;
     }
 
-    soundDecoderRequireBits(soundDecoder, 8);
-    v20 = soundDecoder->hold;
-    soundDecoderDropBits(soundDecoder, 8);
+    requireBits(ad, 8);
+    v20 = ad->bits.data;
+    dropBits(ad, 8);
 
     if (v20 != 1) {
         goto L66;
     }
 
-    soundDecoderRequireBits(soundDecoder, 16);
-    soundDecoder->field_48 = soundDecoder->hold & 0xFFFF;
-    soundDecoderDropBits(soundDecoder, 16);
+    requireBits(ad, 16);
+    ad->file_cnt = ad->bits.data & 0xFFFF;
+    dropBits(ad, 16);
 
-    soundDecoderRequireBits(soundDecoder, 16);
-    soundDecoder->field_48 |= (soundDecoder->hold & 0xFFFF) << 16;
-    soundDecoderDropBits(soundDecoder, 16);
+    requireBits(ad, 16);
+    ad->file_cnt |= (ad->bits.data & 0xFFFF) << 16;
+    dropBits(ad, 16);
 
-    soundDecoderRequireBits(soundDecoder, 16);
-    soundDecoder->field_40 = soundDecoder->hold & 0xFFFF;
-    soundDecoderDropBits(soundDecoder, 16);
+    requireBits(ad, 16);
+    ad->channels = ad->bits.data & 0xFFFF;
+    dropBits(ad, 16);
 
-    soundDecoderRequireBits(soundDecoder, 16);
-    soundDecoder->field_44 = soundDecoder->hold & 0xFFFF;
-    soundDecoderDropBits(soundDecoder, 16);
+    requireBits(ad, 16);
+    ad->rate = ad->bits.data & 0xFFFF;
+    dropBits(ad, 16);
 
-    soundDecoderRequireBits(soundDecoder, 4);
-    soundDecoder->field_20 = soundDecoder->hold & 0x0F;
-    soundDecoderDropBits(soundDecoder, 4);
+    requireBits(ad, 4);
+    ad->levels = ad->bits.data & 0x0F;
+    dropBits(ad, 4);
 
-    soundDecoderRequireBits(soundDecoder, 12);
-    soundDecoder->field_24 = 1 << soundDecoder->field_20;
-    soundDecoder->field_28 = soundDecoder->hold & 0x0FFF;
-    soundDecoder->field_2C = soundDecoder->field_28 * soundDecoder->field_24;
-    soundDecoderDropBits(soundDecoder, 12);
+    requireBits(ad, 12);
+    ad->subbands = 1 << ad->levels;
+    ad->samples_per_subband = ad->bits.data & 0x0FFF;
+    ad->total_samples = ad->samples_per_subband * ad->subbands;
+    dropBits(ad, 12);
 
-    if (soundDecoder->field_20 != 0) {
-        v73 = 3 * soundDecoder->field_24 / 2 - 2;
+    if (ad->levels != 0) {
+        v73 = 3 * ad->subbands / 2 - 2;
     } else {
         v73 = 0;
     }
 
-    soundDecoder->field_38 = 2048 / soundDecoder->field_24 - 2;
-    if (soundDecoder->field_38 < 1) {
-        soundDecoder->field_38 = 1;
+    ad->block_samples_per_subband = 2048 / ad->subbands - 2;
+    if (ad->block_samples_per_subband < 1) {
+        ad->block_samples_per_subband = 1;
     }
 
-    soundDecoder->field_3C = soundDecoder->field_38 * soundDecoder->field_24;
+    ad->block_total_samples = ad->block_samples_per_subband * ad->subbands;
 
     if (v73 != 0) {
-        soundDecoder->field_30 = (unsigned char*)malloc(sizeof(unsigned char*) * v73);
-        if (soundDecoder->field_30 == NULL) {
+        ad->prev_samples = (unsigned char*)malloc(sizeof(unsigned char*) * v73);
+        if (ad->prev_samples == NULL) {
             goto L66;
         }
 
-        memset(soundDecoder->field_30, 0, sizeof(unsigned char*) * v73);
+        memset(ad->prev_samples, 0, sizeof(unsigned char*) * v73);
     }
 
-    soundDecoder->field_34 = (unsigned char*)malloc(sizeof(unsigned char*) * soundDecoder->field_2C);
-    if (soundDecoder->field_34 == NULL) {
+    ad->samples = (unsigned char*)malloc(sizeof(unsigned char*) * ad->total_samples);
+    if (ad->samples == NULL) {
         goto L66;
     }
 
-    soundDecoder->field_50 = 0;
+    ad->samp_cnt = 0;
 
-    if (gSoundDecodersCount == 1) {
-        _AudioDecoder_scale_tbl = (unsigned char*)malloc(0x20000);
-        _AudioDecoder_scale0 = _AudioDecoder_scale_tbl + 0x10000;
+    if (AudioDecoder_cnt == 1) {
+        AudioDecoder_scale_tbl = (unsigned char*)malloc(0x20000);
+        AudioDecoder_scale0 = AudioDecoder_scale_tbl + 0x10000;
     }
 
-    *out_a3 = soundDecoder->field_40;
-    *out_a4 = soundDecoder->field_44;
-    *out_a5 = soundDecoder->field_48;
+    *channels = ad->channels;
+    *sampleRate = ad->rate;
+    *sampleCount = ad->file_cnt;
 
-    return soundDecoder;
+    return ad;
 
 L66:
 
-    soundDecoderFree(soundDecoder);
+    AudioDecoder_Close(ad);
 
-    *out_a3 = 0;
-    *out_a4 = 0;
-    *out_a5 = 0;
+    *channels = 0;
+    *sampleRate = 0;
+    *sampleCount = 0;
 
     return 0;
 }
 
-static inline void soundDecoderRequireBits(SoundDecoder* soundDecoder, int bits)
+static inline void requireBits(AudioDecoder* ad, int n)
 {
-    while (soundDecoder->bits < bits) {
-        soundDecoder->remainingInSize--;
+    while (ad->bits.bitcnt < n) {
+        ad->bits.bytes.buf_cnt--;
 
         unsigned char ch;
-        if (soundDecoder->remainingInSize < 0) {
-            ch = soundDecoderReadNextChunk(soundDecoder);
+        if (ad->bits.bytes.buf_cnt < 0) {
+            ch = ByteReaderFill(&(ad->bits.bytes));
         } else {
-            ch = *soundDecoder->nextIn++;
+            ch = *ad->bits.bytes.buf_ptr++;
         }
-        soundDecoder->hold |= ch << soundDecoder->bits;
-        soundDecoder->bits += 8;
+        ad->bits.data |= ch << ad->bits.bitcnt;
+        ad->bits.bitcnt += 8;
     }
 }
 
-static inline void soundDecoderDropBits(SoundDecoder* soundDecoder, int bits)
+static inline void dropBits(AudioDecoder* ad, int n)
 {
-    soundDecoder->hold >>= bits;
-    soundDecoder->bits -= bits;
+    ad->bits.data >>= n;
+    ad->bits.bitcnt -= n;
 }
