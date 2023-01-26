@@ -954,7 +954,7 @@ int game_load_info_vars(const char* path, const char* section, int* variablesLis
         if (equals != NULL) {
             sscanf(equals + 1, "%d", *variablesListPtr + *variablesListLengthPtr - 1);
         } else {
-            *variablesListPtr[*variablesListLengthPtr - 1] = 0;
+            (*variablesListPtr)[*variablesListLengthPtr - 1] = 0;
         }
     }
 
