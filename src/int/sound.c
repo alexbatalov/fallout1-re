@@ -31,7 +31,7 @@ static long soundFileSize(int fileHandle);
 static long soundTellData(int fileHandle);
 static int soundWriteData(int fileHandle, const void* buf, unsigned int size);
 static int soundReadData(int fileHandle, void* buf, unsigned int size);
-static int soundOpenData(const char* filePath, int flags, ...);
+static int soundOpenData(const char* filePath, int flags);
 static int soundSeekData(int fileHandle, long offset, int origin);
 static int soundCloseData(int fileHandle);
 static char* defaultMangler(char* fname);
@@ -210,7 +210,7 @@ static int soundReadData(int fileHandle, void* buf, unsigned int size)
 }
 
 // 0x499CF8
-static int soundOpenData(const char* filePath, int flags, ...)
+static int soundOpenData(const char* filePath, int flags)
 {
     return open(filePath, flags);
 }

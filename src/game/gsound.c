@@ -986,7 +986,7 @@ int gsound_speech_play(const char* fname, int a2, int a3, int a4)
         return -1;
     }
 
-    if (soundSetFileIO(gsound_speech_tag, &audioOpen, &audioCloseFile, &audioRead, NULL, &audioSeek, &gsound_compressed_tell, &audioFileSize)) {
+    if (soundSetFileIO(gsound_speech_tag, audioOpen, audioCloseFile, audioRead, NULL, audioSeek, gsound_compressed_tell, audioFileSize)) {
         if (gsound_debug) {
             debug_printf("failed because file IO could not be set for compression.\n");
         }

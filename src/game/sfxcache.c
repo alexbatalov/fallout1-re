@@ -151,7 +151,7 @@ void sfxc_flush()
 }
 
 // 0x4972DC
-int sfxc_cached_open(const char* fname, int mode, ...)
+int sfxc_cached_open(const char* fname, int mode)
 {
     if (sfxc_files_open >= SOUND_EFFECTS_MAX_COUNT) {
         return -1;

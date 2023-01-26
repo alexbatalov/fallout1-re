@@ -9,7 +9,7 @@ int sfxc_init(int cache_size, const char* effectsPath);
 void sfxc_exit();
 int sfxc_is_initialized();
 void sfxc_flush();
-int sfxc_cached_open(const char* fname, int mode, ...);
+int sfxc_cached_open(const char* fname, int mode);
 int sfxc_cached_close(int handle);
 int sfxc_cached_read(int handle, void* buf, unsigned int size);
 int sfxc_cached_write(int handle, const void* buf, unsigned int size);
