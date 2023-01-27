@@ -3121,36 +3121,16 @@ static void op_critter_add_trait(Program* program)
         if (PID_TYPE(object->pid) == OBJ_TYPE_CRITTER) {
             switch (kind) {
             case CRITTER_TRAIT_PERK:
-                if (1) {
-                    char* critterName = critter_name(object);
-                    char* perkName = perk_name(param);
-                    debug_printf("\nintextra::critter_add_trait: Adding Perk %s to %s", perkName, critterName);
-
-                    // if (value > 0) {
-                    //     if (perk_add_force(object, param) != 0) {
-                    //         int_debug("\nScript Error: %s: op_critter_add_trait: perk_add_force failed", program->name);
-                    //         debug_printf("Perk: %d", param);
-                    //     }
-                    // } else {
-                    //     if (perk_sub(object, param) != 0) {
-                    //         // FIXME: typo in debug message, should be perk_sub
-                    //         int_debug("\nScript Error: %s: op_critter_add_trait: per_sub failed", program->name);
-                    //         debug_printf("Perk: %d", param);
-                    //     }
-                    // }
-
-                    if (object == obj_dude) {
-                        intface_update_hit_points(true);
-                    }
+                if (perk_add(param) != 0) {
+                    int_debug("\nScript Error: %s: op_critter_add_trait: perk_add failed");
                 }
                 break;
             case CRITTER_TRAIT_OBJECT:
                 switch (param) {
+                case CRITTER_TRAIT_OBJECT_AI_PACKET:
+                    object->data.critter.combat.aiPacket = value;
+                    break;
                 case CRITTER_TRAIT_OBJECT_TEAM:
-                    if (isPartyMember(object)) {
-                        break;
-                    }
-
                     if (object->data.critter.combat.team == value) {
                         break;
                     }
