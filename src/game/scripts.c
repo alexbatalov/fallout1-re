@@ -1133,9 +1133,9 @@ int exec_script_proc(int sid, int action)
         interpretSetCPUBurstSize(5000);
         updatePrograms();
         interpretSetCPUBurstSize(10);
+    } else {
+        executeProcedure(program, proc);
     }
-
-    executeProcedure(program, proc);
 
     script->source = NULL;
 
