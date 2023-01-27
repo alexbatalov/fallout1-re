@@ -1019,21 +1019,11 @@ static int ai_try_attack(Object* critter, Object* target)
     hit_mode = ai_pick_hit_mode(critter, weapon);
 
     if (weapon == NULL) {
-        // FIXME: Looks wrong.
         if (critter_body_type(target) != BODY_TYPE_BIPED
             || (target->fid & 0xF000) >> 12 != 0
             || !art_exists(art_id(OBJ_TYPE_CRITTER, critter->fid & 0xFFF, ANIM_THROW_PUNCH, 0, critter->rotation + 1))) {
             ai_switch_weapons(critter, &hit_mode, &weapon);
         }
-    }
-
-    if (weapon != NULL
-        || (critter_body_type(target) == BODY_TYPE_BIPED
-            && ((target->fid & 0xF000) >> 12 == 0)
-            && art_exists(art_id(OBJ_TYPE_CRITTER, critter->fid & 0xFFF, ANIM_THROW_PUNCH, 0, critter->rotation + 1)))) {
-        ai_switch_weapons(critter, &hit_mode, &weapon);
-    } else {
-        ai_switch_weapons(critter, &hit_mode, &weapon);
     }
 
     for (attempt = 0; attempt < 10; attempt++) {
