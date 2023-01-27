@@ -3174,7 +3174,7 @@ void inven_action_cursor(int keyCode, int inventoryWindowType)
                 actionMenuItemsLength = 3;
                 actionMenuItems = act_no_use;
             } else {
-                if (obj_action_can_use(item) || proto_action_can_use_on(item->pid)) {
+                if (proto_action_can_use(item->pid) || proto_action_can_use_on(item->pid)) {
                     actionMenuItemsLength = 4;
                     actionMenuItems = act_use;
                 } else {
@@ -3360,7 +3360,7 @@ void inven_action_cursor(int keyCode, int inventoryWindowType)
             }
 
             int v21;
-            if (obj_action_can_use(item)) {
+            if (proto_action_can_use(item->pid)) {
                 v21 = protinst_use_item(stack[0], item);
             } else {
                 v21 = protinst_use_item_on(stack[0], stack[0], item);

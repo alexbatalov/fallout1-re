@@ -2552,7 +2552,7 @@ static bool check_ranged_miss(Attack* attack)
     if (critter != NULL) {
         int curr = attack->attacker->tile;
         while (curr != to) {
-            make_straight_path_func(attack->attacker, curr, to, NULL, &critter, 32, obj_shoot_blocking_at);
+            make_straight_path(attack->attacker, curr, to, NULL, &critter, 32);
             if (critter != NULL) {
                 if ((critter->flags & OBJECT_SHOOT_THRU) == 0) {
                     if (FID_TYPE(critter->fid) != OBJ_TYPE_CRITTER) {
@@ -2612,7 +2612,7 @@ static int shoot_along_path(Attack* attack, int endTile, int rounds, int anim)
             break;
         }
 
-        make_straight_path_func(attack->attacker, currentTile, endTile, NULL, &critter, 32, obj_shoot_blocking_at);
+        make_straight_path(attack->attacker, currentTile, endTile, NULL, &critter, 32);
 
         if (critter != NULL) {
             if (FID_TYPE(critter->fid) != OBJ_TYPE_CRITTER) {

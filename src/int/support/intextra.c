@@ -978,13 +978,13 @@ static void op_tile_contains_obj_pid(Program* program)
 
     int result = 0;
 
-    Object* object = obj_find_first_at_tile(elevation, tile);
+    Object* object = obj_find_first_at(elevation);
     while (object) {
-        if (object->pid == pid) {
+        if (object->tile == tile && object->pid == pid) {
             result = 1;
             break;
         }
-        object = obj_find_next_at_tile();
+        object = obj_find_next_at();
     }
 
     interpretPushLong(program, result);
@@ -5581,13 +5581,13 @@ static void op_tile_contains_pid_obj(Program* program)
     Object* found = NULL;
 
     if (tile != -1) {
-        Object* object = obj_find_first_at_tile(elevation, tile);
+        Object* object = obj_find_first_at(elevation);
         while (object != NULL) {
-            if (object->pid == pid) {
+            if (object->tile == tile && object->pid == pid) {
                 found = object;
                 break;
             }
-            object = obj_find_next_at_tile();
+            object = obj_find_next_at();
         }
     }
 

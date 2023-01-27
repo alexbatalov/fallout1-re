@@ -37,7 +37,6 @@ typedef enum OutlineType {
     OUTLINE_TYPE_4 = 4,
     OUTLINE_TYPE_FRIENDLY = 8,
     OUTLINE_TYPE_ITEM = 16,
-    OUTLINE_TYPE_32 = 32,
 } OutlineType;
 
 typedef enum ObjectFlags {

@@ -1709,7 +1709,7 @@ static int intface_redraw_items()
             if (proto_action_can_use_on(itemState->item->pid)) {
                 // USE ON
                 fid = art_id(OBJ_TYPE_INTERFACE, 294, 0, 0, 0);
-            } else if (obj_action_can_use(itemState->item)) {
+            } else if (proto_action_can_use(itemState->item->pid)) {
                 // USE
                 fid = art_id(OBJ_TYPE_INTERFACE, 292, 0, 0, 0);
             } else {
