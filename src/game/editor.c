@@ -5079,7 +5079,7 @@ static int ListKarma()
             }
 
             text_to_buf(win_buf + 640 * y + 34,
-                getmsg(&editor_message_file, &mesg, 1002 + index),
+                getmsg(&editor_message_file, &mesg, 1001 + index),
                 640,
                 640,
                 color);
