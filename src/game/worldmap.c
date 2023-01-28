@@ -2428,38 +2428,38 @@ static int CheckEvents()
                 game_global_vars[GVAR_VATS_COUNTDOWN] = 0;
                 game_global_vars[GVAR_VATS_BLOWN] = 1;
             }
+        }
 
-            if (game_global_vars[GVAR_COUNTDOWN_TO_DESTRUCTION] != 0) {
-                if ((game_time() - game_global_vars[GVAR_COUNTDOWN_TO_DESTRUCTION]) / 10 > 240) {
-                    // FIXME: Typo.
-                    debug_printf("\nWORLD MAP: Doing \"Master lair explode\" specail.\n");
+        if (game_global_vars[GVAR_COUNTDOWN_TO_DESTRUCTION] != 0) {
+            if ((game_time() - game_global_vars[GVAR_COUNTDOWN_TO_DESTRUCTION]) / 10 > 240) {
+                // FIXME: Typo.
+                debug_printf("\nWORLD MAP: Doing \"Master lair explode\" specail.\n");
 
-                    gmovie_play(MOVIE_CATHEXP, GAME_MOVIE_FADE_IN | GAME_MOVIE_FADE_OUT | GAME_MOVIE_PAUSE_MUSIC);
-                    game_global_vars[GVAR_DESTROY_MASTER_5] = 2;
+                gmovie_play(MOVIE_CATHEXP, GAME_MOVIE_FADE_IN | GAME_MOVIE_FADE_OUT | GAME_MOVIE_PAUSE_MUSIC);
+                game_global_vars[GVAR_DESTROY_MASTER_5] = 2;
 
-                    if (game_global_vars[GVAR_VATS_BLOWN] != 0) {
-                        worldmap_script_jump(0, 0);
+                if (game_global_vars[GVAR_VATS_BLOWN] != 0) {
+                    worldmap_script_jump(0, 0);
 
-                        rc = 1;
-                        if (LoadTownMap(TownHotSpots[TOWN_VAULT_13][0].name, TownHotSpots[TOWN_VAULT_13][0].map_idx) == -1) {
-                            rc = -1;
-                        }
+                    rc = 1;
+                    if (LoadTownMap(TownHotSpots[TOWN_VAULT_13][0].name, TownHotSpots[TOWN_VAULT_13][0].map_idx) == -1) {
+                        rc = -1;
                     }
-
-                    stat_pc_add_experience(10000);
-
-                    game_global_vars[GVAR_PLAYER_REPUATION] += 10;
-
-                    // NOTE: Looks like min/max macro usage.
-                    if (game_global_vars[GVAR_PLAYER_REPUATION] < -100) {
-                        game_global_vars[GVAR_PLAYER_REPUATION] = -100;
-                    } else if (game_global_vars[GVAR_PLAYER_REPUATION] > 100) {
-                        game_global_vars[GVAR_PLAYER_REPUATION] = 100;
-                    }
-
-                    game_global_vars[GVAR_COUNTDOWN_TO_DESTRUCTION] = 0;
-                    game_global_vars[GVAR_MASTER_BLOWN] = 1;
                 }
+
+                stat_pc_add_experience(10000);
+
+                game_global_vars[GVAR_PLAYER_REPUATION] += 10;
+
+                // NOTE: Looks like min/max macro usage.
+                if (game_global_vars[GVAR_PLAYER_REPUATION] < -100) {
+                    game_global_vars[GVAR_PLAYER_REPUATION] = -100;
+                } else if (game_global_vars[GVAR_PLAYER_REPUATION] > 100) {
+                    game_global_vars[GVAR_PLAYER_REPUATION] = 100;
+                }
+
+                game_global_vars[GVAR_COUNTDOWN_TO_DESTRUCTION] = 0;
+                game_global_vars[GVAR_MASTER_BLOWN] = 1;
             }
         }
     }
