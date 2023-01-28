@@ -50,6 +50,9 @@
 #define PIPBOY_WINDOW_TIME_X 155
 #define PIPBOY_WINDOW_TIME_Y 17
 
+#define PIPBOY_WINDOW_NOTE_X 32
+#define PIPBOY_WINDOW_NOTE_Y 83
+
 #define PIPBOY_HOLODISK_LINES_MAX 35
 
 #define PIPBOY_WINDOW_CONTENT_VIEW_X 254
@@ -1052,7 +1055,7 @@ static void PipStatus(int a1)
                 }
 
                 int value = game_global_vars[sthreads[location][quest]];
-                if (sthreads[location][quest] == 101) {
+                if (sthreads[location][quest] == GVAR_FIND_WATER_CHIP) {
                     value = 1;
                 }
 
@@ -1094,8 +1097,12 @@ static void PipStatus(int a1)
             }
 
             int value = game_global_vars[sthreads[location][quest]];
-            if (sthreads[location][quest] == 101) {
-                value = 1;
+            if (sthreads[location][quest] == GVAR_FIND_WATER_CHIP) {
+                if (value > 1) {
+                    value = 2;
+                } else {
+                    value = 1;
+                }
             }
 
             if (value > 0) {
@@ -1165,7 +1172,7 @@ static void ListStatLines(int a1)
     for (int location = 0; location < QUEST_LOCATION_COUNT; location += 1) {
         for (int quest = 0; quest < 9; quest++) {
             int value = game_global_vars[sthreads[location][quest]];
-            if (sthreads[location][quest] == 101) {
+            if (sthreads[location][quest] == GVAR_FIND_WATER_CHIP) {
                 value = 1;
             }
 
@@ -2308,20 +2315,20 @@ static int ScreenSaver()
 static void pip_note()
 {
     if (game_global_vars[GVAR_FIND_WATER_CHIP] == 2 || game_global_vars[GVAR_VAULT_WATER] == 0) {
-        buf_to_buf(pipbmp[PIPBOY_FRM_BACKGROUND] + PIPBOY_WINDOW_WIDTH * 83 + 32,
+        buf_to_buf(pipbmp[PIPBOY_FRM_BACKGROUND] + PIPBOY_WINDOW_WIDTH * PIPBOY_WINDOW_NOTE_Y + PIPBOY_WINDOW_NOTE_X,
             ginfo[PIPBOY_FRM_NOTE].width,
             ginfo[PIPBOY_FRM_NOTE].height,
             PIPBOY_WINDOW_WIDTH,
-            scrn_buf + PIPBOY_WINDOW_WIDTH * 83 + 32,
+            scrn_buf + PIPBOY_WINDOW_WIDTH * PIPBOY_WINDOW_NOTE_Y + PIPBOY_WINDOW_NOTE_X,
             PIPBOY_WINDOW_WIDTH);
+    } else {
+        buf_to_buf(pipbmp[PIPBOY_FRM_NOTE],
+            ginfo[PIPBOY_FRM_NOTE].width,
+            ginfo[PIPBOY_FRM_NOTE].height,
+            ginfo[PIPBOY_FRM_NOTE].width,
+            scrn_buf + PIPBOY_WINDOW_WIDTH * PIPBOY_WINDOW_NOTE_Y + PIPBOY_WINDOW_NOTE_X,
+            PIPBOY_WINDOW_WIDTH);
+
+        pip_days_left(game_global_vars[GVAR_VAULT_WATER]);
     }
-
-    buf_to_buf(pipbmp[PIPBOY_FRM_NOTE],
-        ginfo[PIPBOY_FRM_NOTE].width,
-        ginfo[PIPBOY_FRM_NOTE].height,
-        ginfo[PIPBOY_FRM_NOTE].width,
-        scrn_buf + PIPBOY_WINDOW_WIDTH * 83 + 32,
-        PIPBOY_WINDOW_WIDTH);
-
-    pip_days_left(game_global_vars[GVAR_VAULT_WATER]);
 }
