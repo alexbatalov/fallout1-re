@@ -2421,10 +2421,12 @@ void scr_exec_map_enter_scripts()
         script_list_extent = scriptlists[script_type].head;
         while (script_list_extent != NULL) {
             for (script_index = 0; script_index < script_list_extent->length; script_index++) {
-                sid = script_list_extent->scripts[script_index].scr_id;
-                if (sid != map_script_id) {
-                    scr_set_ext_param(sid, (map_data.flags & 0x1) == 0);
-                    exec_script_proc(sid, SCRIPT_PROC_MAP_ENTER);
+                if (script_list_extent->scripts[script_index].procs[SCRIPT_PROC_MAP_ENTER] > 0) {
+                    sid = script_list_extent->scripts[script_index].scr_id;
+                    if (sid != map_script_id) {
+                        scr_set_ext_param(sid, (map_data.flags & 0x1) == 0);
+                        exec_script_proc(sid, SCRIPT_PROC_MAP_ENTER);
+                    }
                 }
             }
             script_list_extent = script_list_extent->next;
@@ -2450,9 +2452,11 @@ void scr_exec_map_update_scripts()
         script_list_extent = scriptlists[script_type].head;
         while (script_list_extent != NULL) {
             for (script_index = 0; script_index < script_list_extent->length; script_index++) {
-                sid = script_list_extent->scripts[script_index].scr_id;
-                if (sid != map_script_id) {
-                    exec_script_proc(sid, SCRIPT_PROC_MAP_UPDATE);
+                if (script_list_extent->scripts[script_index].procs[SCRIPT_PROC_MAP_UPDATE] > 0) {
+                    sid = script_list_extent->scripts[script_index].scr_id;
+                    if (sid != map_script_id) {
+                        exec_script_proc(sid, SCRIPT_PROC_MAP_UPDATE);
+                    }
                 }
             }
             script_list_extent = script_list_extent->next;
