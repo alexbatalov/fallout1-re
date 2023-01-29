@@ -890,7 +890,6 @@ int scripts_check_state()
     if ((scriptState.requests & SCRIPT_REQUEST_ENDGAME) != 0) {
         scriptState.requests &= ~SCRIPT_REQUEST_ENDGAME;
         endgame_slideshow();
-        endgame_movie();
     }
 
     if ((scriptState.requests & SCRIPT_REQUEST_LOOTING) != 0) {
