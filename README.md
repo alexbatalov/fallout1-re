@@ -10,7 +10,7 @@ The goal of this project is to restore original source code as close as possible
 
 ## Status
 
-The game is playable. I haven't completed neither speedrun, nor walkthrough, so I'm not sure if that's possible yet. Function-wise about 1% is not yet decompiled and about 15% of functions from Fallout 2 codebase is currently under review.
+The game can be completed from start to finish. About 6% of functions from Fallout 2 codebase is currently under review. As with F2RE there is a small number of functions that are not decompiled because they are never used in the game.
 
 ## Installation
 
@@ -21,6 +21,10 @@ You must own the game to play. Purchase your copy on [GOG](https://www.gog.com/g
 The best thing you can do is to play and report bugs or inconsistencies. Attach zipped save if needed.
 
 Please do not submit new features or any code that is not present in Fallout 1 binary. Once decompilation/review process is completed the development will be continued in the new repository. This repository will be left intact for historical reasons.
+
+## Special Thanks
+
+- [c6](https://github.com/c6-dev): for extensive gameplay testing.
 
 ## Legal
 
