@@ -1283,7 +1283,7 @@ void exit_inventory(bool shouldEnableIso)
 }
 
 // 0x463758
-void display_inventory(int a1, int a2, int inventoryWindowType)
+void display_inventory(int first_item_index, int selected_index, int inventoryWindowType)
 {
     unsigned char* windowBuffer = win_get_buf(i_wid);
     int pitch;
@@ -1359,9 +1359,7 @@ void display_inventory(int a1, int a2, int inventoryWindowType)
     }
 
     int y = 0;
-    for (int v19 = 0; v19 + a1 < pud->length && v19 < inven_cur_disp; v19 += 1) {
-        int v21 = v19 + a1 + 1;
-
+    for (int index = 0; index + first_item_index < pud->length && index < inven_cur_disp; index += 1) {
         int width;
         int offset;
         if (inventoryWindowType == INVENTORY_WINDOW_TYPE_TRADE) {
@@ -1372,14 +1370,14 @@ void display_inventory(int a1, int a2, int inventoryWindowType)
             width = 56;
         }
 
-        InventoryItem* inventoryItem = &(pud->items[pud->length - v21]);
+        InventoryItem* inventoryItem = &(pud->items[index + first_item_index]);
 
         int inventoryFid = item_inv_fid(inventoryItem->item);
         scale_art(inventoryFid, windowBuffer + offset, width, 40, pitch);
 
         offset = pitch * (y + 39) + 48 + v49;
 
-        display_inventory_info(inventoryItem->item, inventoryItem->quantity, windowBuffer + offset, pitch, v19 == a2);
+        display_inventory_info(inventoryItem->item, inventoryItem->quantity, windowBuffer + offset, pitch, index == selected_index);
 
         y += 48;
     }
@@ -1407,11 +1405,8 @@ void display_inventory(int a1, int a2, int inventoryWindowType)
 
 // Render inventory item.
 //
-// [a1] is likely an index of the first visible item in the scrolling view.
-// [a2] is likely an index of selected item or moving item (it decreases displayed number of items in inner functions).
-//
 // 0x463C00
-void display_target_inventory(int a1, int a2, Inventory* inventory, int inventoryWindowType)
+void display_target_inventory(int first_item_index, int selected_index, Inventory* inventory, int inventoryWindowType)
 {
     unsigned char* windowBuffer = win_get_buf(i_wid);
 
@@ -1437,12 +1432,7 @@ void display_target_inventory(int a1, int a2, Inventory* inventory, int inventor
     }
 
     int y = 0;
-    for (int index = 0; index < inven_cur_disp; index++) {
-        int v27 = a1 + index;
-        if (v27 >= inventory->length) {
-            break;
-        }
-
+    for (int index = 0; index < inven_cur_disp && first_item_index + index < inventory->length; index++) {
         int offset;
         switch (inventoryWindowType) {
         case INVENTORY_WINDOW_TYPE_LOOT:
@@ -1453,10 +1443,10 @@ void display_target_inventory(int a1, int a2, Inventory* inventory, int inventor
             break;
         }
 
-        InventoryItem* inventoryItem = &(inventory->items[inventory->length - (v27 + 1)]);
+        InventoryItem* inventoryItem = &(inventory->items[first_item_index + index]);
         int inventoryFid = item_inv_fid(inventoryItem->item);
         scale_art(inventoryFid, windowBuffer + offset, 56, 40, pitch);
-        display_inventory_info(inventoryItem->item, inventoryItem->quantity, windowBuffer + offset, pitch, index == a2);
+        display_inventory_info(inventoryItem->item, inventoryItem->quantity, windowBuffer + offset, pitch, index == selected_index);
 
         y += 48;
     }
@@ -1792,7 +1782,7 @@ void inven_hover_off(int btn, int keyCode)
 }
 
 // 0x46457C
-void inven_pickup(int keyCode, int a2)
+void inven_pickup(int keyCode, int first_item_index)
 {
     Object* a1a;
     Object** v29 = NULL;
@@ -1826,7 +1816,7 @@ void inven_pickup(int keyCode, int a2)
         break;
     }
 
-    if (v3 == -1 || pud->items[a2 + v3].quantity <= 1) {
+    if (v3 == -1 || pud->items[first_item_index + v3].quantity <= 1) {
         unsigned char* windowBuffer = win_get_buf(i_wid);
         if (i_rhand != i_lhand || a1a != i_lhand) {
             int height;
@@ -1865,7 +1855,7 @@ void inven_pickup(int keyCode, int a2)
         }
         win_draw_rect(i_wid, &rect);
     } else {
-        display_inventory(a2, v3, INVENTORY_WINDOW_TYPE_NORMAL);
+        display_inventory(first_item_index, v3, INVENTORY_WINDOW_TYPE_NORMAL);
     }
 
     CacheEntry* itemInventoryFrmHandle;
@@ -1894,9 +1884,9 @@ void inven_pickup(int keyCode, int a2)
         int y;
         mouse_get_position(&x, &y);
 
-        int v18 = (y - 39) / 48 + a2;
-        if (v18 < pud->length) {
-            Object* v19 = pud->items[v18].item;
+        int index = (y - 39) / 48;
+        if (index + first_item_index < pud->length) {
+            Object* v19 = pud->items[index + first_item_index].item;
             if (v19 != a1a) {
                 // TODO: Needs checking usage of v19
                 if (item_get_type(v19) == ITEM_TYPE_CONTAINER) {
@@ -1975,7 +1965,7 @@ void inven_pickup(int keyCode, int a2)
 
     adjust_fid();
     display_stats();
-    display_inventory(a2, -1, INVENTORY_WINDOW_TYPE_NORMAL);
+    display_inventory(first_item_index, -1, INVENTORY_WINDOW_TYPE_NORMAL);
     inven_set_mouse(INVENTORY_WINDOW_CURSOR_HAND);
 }
 
@@ -2831,7 +2821,7 @@ int inven_from_button(int keyCode, Object** a2, Object*** a3, Object** a4)
                 break;
             }
 
-            inventoryItem = &(pud->items[pud->length - (index + 1)]);
+            inventoryItem = &(pud->items[index]);
             item = inventoryItem->item;
             owner = stack[curr_stack];
         } else if (keyCode < 2300) {
@@ -2840,7 +2830,7 @@ int inven_from_button(int keyCode, Object** a2, Object*** a3, Object** a4)
                 break;
             }
 
-            inventoryItem = &(target_pud->items[target_pud->length - (index + 1)]);
+            inventoryItem = &(target_pud->items[index]);
             item = inventoryItem->item;
             owner = target_stack[target_curr_stack];
         } else if (keyCode < 2400) {
@@ -2849,7 +2839,7 @@ int inven_from_button(int keyCode, Object** a2, Object*** a3, Object** a4)
                 break;
             }
 
-            inventoryItem = &(ptable_pud->items[ptable_pud->length - (index + 1)]);
+            inventoryItem = &(ptable_pud->items[index]);
             item = inventoryItem->item;
             owner = ptable;
         } else {
@@ -2858,7 +2848,7 @@ int inven_from_button(int keyCode, Object** a2, Object*** a3, Object** a4)
                 break;
             }
 
-            inventoryItem = &(btable_pud->items[btable_pud->length - (index + 1)]);
+            inventoryItem = &(btable_pud->items[index]);
             item = inventoryItem->item;
             owner = btable;
         }
@@ -3682,13 +3672,13 @@ int loot_container(Object* a1, Object* a2)
                     if (immode == INVENTORY_WINDOW_CURSOR_ARROW) {
                         inven_action_cursor(keyCode, INVENTORY_WINDOW_TYPE_LOOT);
                     } else {
-                        int v40 = keyCode - 1000;
-                        if (v40 + stack_offset[curr_stack] < pud->length) {
+                        int index = keyCode - 1000;
+                        if (index + stack_offset[curr_stack] < pud->length) {
                             gStealCount += 1;
                             gStealSize += item_size(stack[curr_stack]);
 
-                            InventoryItem* inventoryItem = &(pud->items[pud->length - (v40 + stack_offset[curr_stack] + 1)]);
-                            int rc = move_inventory(inventoryItem->item, v40, target_stack[target_curr_stack], true);
+                            InventoryItem* inventoryItem = &(pud->items[index + stack_offset[curr_stack]]);
+                            int rc = move_inventory(inventoryItem->item, index, target_stack[target_curr_stack], true);
                             if (rc == 1) {
                                 isCaughtStealing = true;
                             } else if (rc == 2) {
@@ -3706,13 +3696,13 @@ int loot_container(Object* a1, Object* a2)
                     if (immode == INVENTORY_WINDOW_CURSOR_ARROW) {
                         inven_action_cursor(keyCode, INVENTORY_WINDOW_TYPE_LOOT);
                     } else {
-                        int v46 = keyCode - 2000;
-                        if (v46 + target_stack_offset[target_curr_stack] < target_pud->length) {
+                        int index = keyCode - 2000;
+                        if (index + target_stack_offset[target_curr_stack] < target_pud->length) {
                             gStealCount += 1;
                             gStealSize += item_size(stack[curr_stack]);
 
-                            InventoryItem* inventoryItem = &(target_pud->items[target_pud->length - (v46 + target_stack_offset[target_curr_stack] + 1)]);
-                            int rc = move_inventory(inventoryItem->item, v46, target_stack[target_curr_stack], false);
+                            InventoryItem* inventoryItem = &(target_pud->items[index + target_stack_offset[target_curr_stack]]);
+                            int rc = move_inventory(inventoryItem->item, index, target_stack[target_curr_stack], false);
                             if (rc == 1) {
                                 isCaughtStealing = true;
                             } else if (rc == 2) {
@@ -3837,7 +3827,7 @@ int move_inventory(Object* a1, int a2, Object* a3, bool a4)
         rect.ulx = INVENTORY_LOOT_LEFT_SCROLLER_X;
         rect.uly = INVENTORY_SLOT_HEIGHT * a2 + INVENTORY_LOOT_LEFT_SCROLLER_Y;
 
-        InventoryItem* inventoryItem = &(pud->items[pud->length - (a2 + stack_offset[curr_stack] + 1)]);
+        InventoryItem* inventoryItem = &(pud->items[a2 + stack_offset[curr_stack]]);
         quantity = inventoryItem->quantity;
         if (quantity > 1) {
             display_inventory(stack_offset[curr_stack], a2, INVENTORY_WINDOW_TYPE_LOOT);
@@ -3847,7 +3837,7 @@ int move_inventory(Object* a1, int a2, Object* a3, bool a4)
         rect.ulx = INVENTORY_LOOT_RIGHT_SCROLLER_X;
         rect.uly = INVENTORY_SLOT_HEIGHT * a2 + INVENTORY_LOOT_RIGHT_SCROLLER_Y;
 
-        InventoryItem* inventoryItem = &(target_pud->items[target_pud->length - (a2 + target_stack_offset[target_curr_stack] + 1)]);
+        InventoryItem* inventoryItem = &(target_pud->items[a2 + target_stack_offset[target_curr_stack]]);
         quantity = inventoryItem->quantity;
         if (quantity > 1) {
             display_target_inventory(target_stack_offset[target_curr_stack], a2, target_pud, INVENTORY_WINDOW_TYPE_LOOT);
@@ -4199,7 +4189,7 @@ static void display_table_inventories(int win, Object* a2, Object* a3, int a4)
         unsigned char* dest = windowBuffer + 480 * 24 + 169;
         Inventory* inventory = &(a2->data.inventory);
         for (int index = 0; index < inven_cur_disp && index + ptable_offset < inventory->length; index++) {
-            InventoryItem* inventoryItem = &(inventory->items[inventory->length - (index + ptable_offset + 1)]);
+            InventoryItem* inventoryItem = &(inventory->items[index + ptable_offset]);
             int inventoryFid = item_inv_fid(inventoryItem->item);
             scale_art(inventoryFid, dest, 56, 40, 480);
             display_inventory_info(inventoryItem->item, inventoryItem->quantity, dest, 480, index == a4);
@@ -4227,7 +4217,7 @@ static void display_table_inventories(int win, Object* a2, Object* a3, int a4)
         unsigned char* dest = windowBuffer + 480 * 24 + 254;
         Inventory* inventory = &(a3->data.inventory);
         for (int index = 0; index < inven_cur_disp && index + btable_offset < inventory->length; index++) {
-            InventoryItem* inventoryItem = &(inventory->items[inventory->length - (index + btable_offset + 1)]);
+            InventoryItem* inventoryItem = &(inventory->items[index + btable_offset]);
             int inventoryFid = item_inv_fid(inventoryItem->item);
             scale_art(inventoryFid, dest, 56, 40, 480);
             display_inventory_info(inventoryItem->item, inventoryItem->quantity, dest, 480, index == a4);
@@ -4422,11 +4412,10 @@ void barter_inventory(int win, Object* a2, Object* a3, Object* a4, int a5)
                         inven_action_cursor(keyCode, INVENTORY_WINDOW_TYPE_TRADE);
                         display_table_inventories(win, a3, NULL, -1);
                     } else {
-                        int v30 = keyCode - 1000;
-                        if (v30 + stack_offset[curr_stack] < pud->length) {
-                            int v31 = stack_offset[curr_stack];
-                            InventoryItem* inventoryItem = &(pud->items[pud->length - (v30 + v31 + 1)]);
-                            barter_move_inventory(inventoryItem->item, inventoryItem->quantity, v30, v31, a2, a3, true);
+                        int index = keyCode - 1000;
+                        if (index + stack_offset[curr_stack] < pud->length) {
+                            InventoryItem* inventoryItem = &(pud->items[index + stack_offset[curr_stack]]);
+                            barter_move_inventory(inventoryItem->item, inventoryItem->quantity, index, stack_offset[curr_stack], a2, a3, true);
                             display_target_inventory(target_stack_offset[target_curr_stack], -1, target_pud, INVENTORY_WINDOW_TYPE_TRADE);
                             display_inventory(stack_offset[curr_stack], -1, INVENTORY_WINDOW_TYPE_TRADE);
                             display_table_inventories(win, a3, NULL, -1);
@@ -4439,11 +4428,10 @@ void barter_inventory(int win, Object* a2, Object* a3, Object* a4, int a5)
                         inven_action_cursor(keyCode, INVENTORY_WINDOW_TYPE_TRADE);
                         display_table_inventories(win, NULL, a4, -1);
                     } else {
-                        int v35 = keyCode - 2000;
-                        if (v35 + target_stack_offset[target_curr_stack] < target_pud->length) {
-                            int v36 = target_stack_offset[target_curr_stack];
-                            InventoryItem* inventoryItem = &(target_pud->items[target_pud->length - (v35 + v36 + 1)]);
-                            barter_move_inventory(inventoryItem->item, inventoryItem->quantity, v35, v36, a2, a4, false);
+                        int index = keyCode - 2000;
+                        if (index + target_stack_offset[target_curr_stack] < target_pud->length) {
+                            InventoryItem* inventoryItem = &(target_pud->items[index + target_stack_offset[target_curr_stack]]);
+                            barter_move_inventory(inventoryItem->item, inventoryItem->quantity, index, target_stack_offset[target_curr_stack], a2, a4, false);
                             display_target_inventory(target_stack_offset[target_curr_stack], -1, target_pud, INVENTORY_WINDOW_TYPE_TRADE);
                             display_inventory(stack_offset[curr_stack], -1, INVENTORY_WINDOW_TYPE_TRADE);
                             display_table_inventories(win, NULL, a4, -1);
@@ -4456,10 +4444,10 @@ void barter_inventory(int win, Object* a2, Object* a3, Object* a4, int a5)
                         inven_action_cursor(keyCode, INVENTORY_WINDOW_TYPE_TRADE);
                         display_table_inventories(win, a3, NULL, -1);
                     } else {
-                        int v41 = keyCode - 2300;
-                        if (v41 < ptable_pud->length) {
-                            InventoryItem* inventoryItem = &(ptable_pud->items[ptable_pud->length - (v41 + ptable_offset + 1)]);
-                            barter_move_from_table_inventory(inventoryItem->item, inventoryItem->quantity, v41, a2, a3, true);
+                        int index = keyCode - 2300;
+                        if (index < ptable_pud->length) {
+                            InventoryItem* inventoryItem = &(ptable_pud->items[index + ptable_offset]);
+                            barter_move_from_table_inventory(inventoryItem->item, inventoryItem->quantity, index, a2, a3, true);
                             display_target_inventory(target_stack_offset[target_curr_stack], -1, target_pud, INVENTORY_WINDOW_TYPE_TRADE);
                             display_inventory(stack_offset[curr_stack], -1, INVENTORY_WINDOW_TYPE_TRADE);
                             display_table_inventories(win, a3, NULL, -1);
@@ -4472,10 +4460,10 @@ void barter_inventory(int win, Object* a2, Object* a3, Object* a4, int a5)
                         inven_action_cursor(keyCode, INVENTORY_WINDOW_TYPE_TRADE);
                         display_table_inventories(win, NULL, a4, -1);
                     } else {
-                        int v45 = keyCode - 2400;
-                        if (v45 < btable_pud->length) {
-                            InventoryItem* inventoryItem = &(btable_pud->items[btable_pud->length - (v45 + btable_offset + 1)]);
-                            barter_move_from_table_inventory(inventoryItem->item, inventoryItem->quantity, v45, a2, a4, false);
+                        int index = keyCode - 2400;
+                        if (index < btable_pud->length) {
+                            InventoryItem* inventoryItem = &(btable_pud->items[index + btable_offset]);
+                            barter_move_from_table_inventory(inventoryItem->item, inventoryItem->quantity, index, a2, a4, false);
                             display_target_inventory(target_stack_offset[target_curr_stack], -1, target_pud, INVENTORY_WINDOW_TYPE_TRADE);
                             display_inventory(stack_offset[curr_stack], -1, INVENTORY_WINDOW_TYPE_TRADE);
                             display_table_inventories(win, NULL, a4, -1);
@@ -4515,7 +4503,7 @@ void barter_inventory(int win, Object* a2, Object* a3, Object* a4, int a5)
 void container_enter(int keyCode, int inventoryWindowType)
 {
     if (keyCode >= 2000) {
-        int index = target_pud->length - (target_stack_offset[target_curr_stack] + keyCode - 2000 + 1);
+        int index = target_stack_offset[target_curr_stack] + keyCode - 2000;
         if (index < target_pud->length && target_curr_stack < 9) {
             InventoryItem* inventoryItem = &(target_pud->items[index]);
             Object* item = inventoryItem->item;
@@ -4532,7 +4520,7 @@ void container_enter(int keyCode, int inventoryWindowType)
             }
         }
     } else {
-        int index = pud->length - (stack_offset[curr_stack] + keyCode - 1000 + 1);
+        int index = stack_offset[curr_stack] + keyCode - 1000;
         if (index < pud->length && curr_stack < 9) {
             InventoryItem* inventoryItem = &(pud->items[index]);
             Object* item = inventoryItem->item;
