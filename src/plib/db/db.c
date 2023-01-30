@@ -902,6 +902,7 @@ int db_fgetc(DB_FILE* stream)
                         if (stream->field_10 != 0 && (stream->flags & 0x2) != 0 && ch == '\r') {
                             next_ch = fgetc(stream->database->stream);
                             if (next_ch == '\n') {
+                                stream->field_10--;
                                 ch = '\n';
                             } else {
                                 ungetc(next_ch, stream->database->stream);
