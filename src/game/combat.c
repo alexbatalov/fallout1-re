@@ -3671,14 +3671,9 @@ void combat_display(Attack* attack)
 
     char you[20];
     you[0] = '\0';
-    if (stat_level(obj_dude, STAT_GENDER) == GENDER_MALE) {
-        // You (male)
-        messageListItem.num = 506;
-    } else {
-        // You (female)
-        messageListItem.num = 556;
-    }
 
+    // You (player)
+    messageListItem.num = 506;
     if (message_search(&combat_message_file, &messageListItem)) {
         strcpy(you, messageListItem.text);
     }
@@ -3686,11 +3681,7 @@ void combat_display(Attack* attack)
     int baseMessageId;
     if (mainCritter == obj_dude) {
         mainCritterName = you;
-        if (stat_level(obj_dude, STAT_GENDER) == GENDER_MALE) {
-            baseMessageId = 500;
-        } else {
-            baseMessageId = 550;
-        }
+        baseMessageId = 500;
     } else if (mainCritter != NULL) {
         mainCritterName = object_name(mainCritter);
         if (stat_level(mainCritter, STAT_GENDER) == GENDER_MALE) {
@@ -3714,8 +3705,7 @@ void combat_display(Attack* attack)
                     sprintf(text, messageListItem.text, mainCritterName);
                 }
             } else {
-                // 509 (male) - Oops! %s were hit instead of %s!
-                // 559 (female) - Oops! %s were hit instead of %s!
+                // 509 (player) - Oops! %s were hit instead of %s!
                 const char* name = object_name(attack->oops);
                 messageListItem.num = baseMessageId + 9;
                 if (message_search(&combat_message_file, &messageListItem)) {
@@ -3724,13 +3714,8 @@ void combat_display(Attack* attack)
             }
         } else {
             if (attack->attacker == obj_dude) {
-                if (stat_level(attack->attacker, STAT_GENDER) == GENDER_MALE) {
-                    // (male) %s missed
-                    messageListItem.num = 515;
-                } else {
-                    // (female) %s missed
-                    messageListItem.num = 565;
-                }
+                // (player) %s missed
+                messageListItem.num = 515;
 
                 if (message_search(&combat_message_file, &messageListItem)) {
                     sprintf(text, messageListItem.text, you);
@@ -3757,11 +3742,10 @@ void combat_display(Attack* attack)
     }
 
     if ((attack->attackerFlags & DAM_HIT) != 0) {
-        Object* v21 = attack->defender;
-        if (v21 != NULL && (v21->data.critter.combat.results & DAM_DEAD) == 0) {
+        if (attack->defender != NULL && (attack->defender->data.critter.combat.results & DAM_DEAD) == 0) {
             text[0] = '\0';
 
-            if (FID_TYPE(v21->fid) == OBJ_TYPE_CRITTER) {
+            if (FID_TYPE(attack->defender->fid) == OBJ_TYPE_CRITTER) {
                 if (attack->defenderHitLocation == HIT_LOCATION_TORSO) {
                     if ((attack->attackerFlags & DAM_CRITICAL) != 0) {
                         switch (attack->defenderDamage) {
@@ -3787,10 +3771,10 @@ void combat_display(Attack* attack)
                             }
                         }
                     } else {
-                        combat_display_hit(text, v21, attack->defenderDamage);
+                        combat_display_hit(text, attack->defender, attack->defenderDamage);
                     }
                 } else {
-                    const char* hitLocationName = combat_get_loc_name(v21, attack->defenderHitLocation);
+                    const char* hitLocationName = combat_get_loc_name(attack->defender, attack->defenderHitLocation);
                     if (hitLocationName != NULL) {
                         if ((attack->attackerFlags & DAM_CRITICAL) != 0) {
                             switch (attack->defenderDamage) {
