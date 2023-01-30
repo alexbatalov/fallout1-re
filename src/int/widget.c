@@ -75,28 +75,28 @@ static void showRegion(UpdateRegion* updateRegion);
 static void freeStatusBar();
 static void drawStatusBar();
 
-// 0x66E6A0
+// 0x66B6C0
 static UpdateRegion* updateRegions[WIDGET_UPDATE_REGIONS_CAPACITY];
 
-// 0x66E720
+// 0x66B740
 static StatusBar statusBar;
 
-// 0x66E750
+// 0x66B770
 static TextInputRegion* textInputRegions;
 
-// 0x66E754
+// 0x66B774
 static int numTextInputRegions;
 
-// 0x66E758
+// 0x66B778
 static TextRegion* textRegions;
 
-// 0x66E75C
+// 0x66B77C
 static int statusBarActive;
 
-// 0x66E760
+// 0x66B780
 static int numTextRegions;
 
-// 0x4B45A0
+// 0x4A10E0
 static void deleteChar(char* string, int pos, int length)
 {
     if (length > pos) {
@@ -104,7 +104,7 @@ static void deleteChar(char* string, int pos, int length)
     }
 }
 
-// 0x4B45C8
+// 0x4A1108
 static void insertChar(char* string, char ch, int pos, int length)
 {
     if (length >= pos) {
@@ -115,13 +115,13 @@ static void insertChar(char* string, char ch, int pos, int length)
     }
 }
 
-// 0x4B4788
+// 0x4A12C4
 static void textInputRegionDispatch(int btn, int inputEvent)
 {
     // TODO: Incomplete.
 }
 
-// 0x4B51D4
+// 0x4A1D14
 int win_add_text_input_region(int textRegionId, char* text, int a3, int a4)
 {
     int textInputRegionIndex;
@@ -189,15 +189,13 @@ int win_add_text_input_region(int textRegionId, char* text, int a3, int a4)
     return textInputRegionIndex + 1;
 }
 
-// NOTE: Unused.
-//
-// 0x4B53A8
+// 0x4A1EE8
 void windowSelectTextInputRegion(int textInputRegionId)
 {
     textInputRegionDispatch(textInputRegions[textInputRegionId - 1].btn, textInputRegionId | 0x400);
 }
 
-// 0x4B53D0
+// 0x4A1F10
 int win_delete_all_text_input_regions(int win)
 {
     int index;
@@ -211,7 +209,7 @@ int win_delete_all_text_input_regions(int win)
     return 1;
 }
 
-// 0x4B541C
+// 0x4A1F5C
 int win_delete_text_input_region(int textInputRegionId)
 {
     int textInputRegionIndex;
@@ -233,7 +231,7 @@ int win_delete_text_input_region(int textInputRegionId)
     return 0;
 }
 
-// 0x4B54C8
+// 0x4A2008
 int win_set_text_input_delete_func(int textInputRegionId, TextInputRegionDeleteFunc* deleteFunc, void* userData)
 {
     int textInputRegionIndex;
@@ -250,7 +248,7 @@ int win_set_text_input_delete_func(int textInputRegionId, TextInputRegionDeleteF
     return 0;
 }
 
-// 0x4B5508
+// 0x4A2048
 int win_add_text_region(int win, int x, int y, int width, int font, int textAlignment, int textFlags, int backgroundColor)
 {
     int textRegionIndex;
@@ -298,7 +296,7 @@ int win_add_text_region(int win, int x, int y, int width, int font, int textAlig
     return textRegionIndex + 1;
 }
 
-// 0x4B5634
+// 0x4A2174
 int win_print_text_region(int textRegionId, char* string)
 {
     int textRegionIndex;
@@ -336,7 +334,7 @@ int win_print_text_region(int textRegionId, char* string)
     return 0;
 }
 
-// 0x4B5714
+// 0x4A2254
 int win_print_substr_region(int textRegionId, char* string, int stringLength)
 {
     int textRegionIndex;
@@ -374,7 +372,7 @@ int win_print_substr_region(int textRegionId, char* string, int stringLength)
     return 0;
 }
 
-// 0x4B57E4
+// 0x4A2324
 int win_update_text_region(int textRegionId)
 {
     int textRegionIndex;
@@ -395,7 +393,7 @@ int win_update_text_region(int textRegionId)
     return 0;
 }
 
-// 0x4B5864
+// 0x4A23A4
 int win_delete_text_region(int textRegionId)
 {
     int textRegionIndex;
@@ -411,7 +409,7 @@ int win_delete_text_region(int textRegionId)
     return 0;
 }
 
-// 0x4B58A0
+// 0x4A23E0
 int win_delete_all_update_regions(int win)
 {
     int index;
@@ -428,7 +426,7 @@ int win_delete_all_update_regions(int win)
     return 1;
 }
 
-// 0x4B58E8
+// 0x4A2428
 int win_text_region_style(int textRegionId, int font, int textAlignment, int textFlags, int backgroundColor)
 {
     int textRegionIndex;
@@ -465,7 +463,7 @@ int win_text_region_style(int textRegionId, int font, int textAlignment, int tex
     return 0;
 }
 
-// 0x4B5998
+// 0x4A24D8
 void win_delete_widgets(int win)
 {
     int index;
@@ -482,7 +480,7 @@ void win_delete_widgets(int win)
     win_delete_all_update_regions(win);
 }
 
-// 0x4B5A04
+// 0x4A2544
 int widgetDoInput()
 {
     int index;
@@ -496,7 +494,7 @@ int widgetDoInput()
     return 0;
 }
 
-// 0x4B5A2C
+// 0x4A256C
 int win_center_str(int win, char* string, int y, int a4)
 {
     int windowWidth;
@@ -509,7 +507,7 @@ int win_center_str(int win, char* string, int y, int a4)
     return 1;
 }
 
-// 0x4B5A64
+// 0x4A25A4
 static void showRegion(UpdateRegion* updateRegion)
 {
     float value;
@@ -568,7 +566,7 @@ static void showRegion(UpdateRegion* updateRegion)
         updateRegion->field_10 | 0x1000000);
 }
 
-// 0x4B5BE8
+// 0x4A2724
 int draw_widgets()
 {
     int index;
@@ -584,7 +582,7 @@ int draw_widgets()
     return 1;
 }
 
-// 0x4B5C24
+// 0x4A2760
 int update_widgets()
 {
     for (int index = 0; index < WIDGET_UPDATE_REGIONS_CAPACITY; index++) {
@@ -596,7 +594,7 @@ int update_widgets()
     return 1;
 }
 
-// 0x4B5C4C
+// 0x4A2788
 int win_register_update(int win, int x, int y, UpdateRegionShowFunc* showFunc, UpdateRegionDrawFunc* drawFunc, void* value, unsigned int type, int a8)
 {
     int updateRegionIndex;
@@ -624,7 +622,7 @@ int win_register_update(int win, int x, int y, UpdateRegionShowFunc* showFunc, U
     return updateRegionIndex;
 }
 
-// 0x4B5D0C
+// 0x4A2848
 int win_delete_update_region(int updateRegionIndex)
 {
     if (updateRegionIndex >= 0 && updateRegionIndex < WIDGET_UPDATE_REGIONS_CAPACITY) {
@@ -638,7 +636,7 @@ int win_delete_update_region(int updateRegionIndex)
     return 0;
 }
 
-// 0x4B5D54
+// 0x4A2890
 void win_do_updateregions()
 {
     for (int index = 0; index < WIDGET_UPDATE_REGIONS_CAPACITY; index++) {
@@ -648,7 +646,7 @@ void win_do_updateregions()
     }
 }
 
-// 0x4B5D78
+// 0x4A28B4
 static void freeStatusBar()
 {
     if (statusBar.field_0 != NULL) {
@@ -666,7 +664,7 @@ static void freeStatusBar()
     statusBarActive = 0;
 }
 
-// 0x4B5DE4
+// 0x4A2920
 void initWidgets()
 {
     int updateRegionIndex;
@@ -684,7 +682,7 @@ void initWidgets()
     freeStatusBar();
 }
 
-// 0x4B5E1C
+// 0x4A2958
 void widgetsClose()
 {
     if (textRegions != NULL) {
@@ -702,7 +700,7 @@ void widgetsClose()
     freeStatusBar();
 }
 
-// 0x4B5E7C
+// 0x4A29B8
 static void drawStatusBar()
 {
     Rect rect;
@@ -733,7 +731,7 @@ static void drawStatusBar()
     }
 }
 
-// 0x4B5F5C
+// 0x4A2A98
 void real_win_set_status_bar(int a1, int a2, int a3)
 {
     if (statusBarActive) {
@@ -744,7 +742,7 @@ void real_win_set_status_bar(int a1, int a2, int a3)
     }
 }
 
-// 0x4B5F80
+// 0x4A2ABC
 void real_win_update_status_bar(float a1, float a2)
 {
     if (statusBarActive) {
@@ -756,7 +754,7 @@ void real_win_update_status_bar(float a1, float a2)
     }
 }
 
-// 0x4B5FD4
+// 0x4A2B0C
 void real_win_increment_status_bar(float a1)
 {
     if (statusBarActive) {
@@ -766,7 +764,7 @@ void real_win_increment_status_bar(float a1)
     }
 }
 
-// 0x4B6020
+// 0x4A2B58
 void real_win_add_status_bar(int win, int a2, char* a3, char* a4, int x, int y)
 {
     int imageWidth1;
@@ -793,7 +791,7 @@ void real_win_add_status_bar(int win, int a2, char* a3, char* a4, int x, int y)
     }
 }
 
-// 0x4B60CC
+// 0x4A2C04
 void real_win_get_status_info(int a1, int* a2, int* a3, int* a4)
 {
     if (statusBarActive) {
@@ -807,7 +805,7 @@ void real_win_get_status_info(int a1, int* a2, int* a3, int* a4)
     }
 }
 
-// 0x4B6100
+// 0x4A2C38
 void real_win_modify_status_info(int a1, int a2, int a3, int a4)
 {
     if (statusBarActive) {
