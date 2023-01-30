@@ -3468,56 +3468,33 @@ void apply_damage(Attack* attack, bool animated)
 {
     Object* attacker = attack->attacker;
     bool attackerIsCritter = attacker != NULL && FID_TYPE(attacker->fid) == OBJ_TYPE_CRITTER;
-    bool v5 = attack->defender != attack->oops;
 
     if (attackerIsCritter && (attacker->data.critter.combat.results & DAM_DEAD) != 0) {
         set_new_results(attacker, attack->attackerFlags);
-        // TODO: Not sure about "attack->defender == attack->oops".
-        damage_object(attacker, attack->attackerDamage, animated, attack->defender == attack->oops, attacker);
+        damage_object(attacker, attack->attackerDamage, animated, attack->defender != attack->oops, attacker);
     }
 
-    Object* v7 = attack->oops;
-    if (v7 != NULL && v7 != attack->defender) {
-        combatai_notify_onlookers(v7);
+    if (attack->oops != NULL && attack->oops != attack->defender) {
+        combatai_notify_onlookers(attack->oops);
     }
 
     Object* defender = attack->defender;
     bool defenderIsCritter = defender != NULL && FID_TYPE(defender->fid) == OBJ_TYPE_CRITTER;
 
-    if (!defenderIsCritter && !v5) {
-        bool v9 = isPartyMember(attack->defender) && isPartyMember(attack->attacker) ? false : true;
-        if (v9) {
-            if (defender != NULL) {
-                if (defender->sid != -1) {
-                    scr_set_ext_param(defender->sid, attack->attackerDamage);
-                    scr_set_objs(defender->sid, attack->attacker, attack->weapon);
-                    exec_script_proc(defender->sid, SCRIPT_PROC_DAMAGE);
-                }
-            }
-        }
-    }
-
     if (defenderIsCritter && (defender->data.critter.combat.results & DAM_DEAD) == 0) {
         set_new_results(defender, attack->defenderFlags);
 
-        if (defenderIsCritter) {
-            if (defenderIsCritter) {
-                if ((defender->data.critter.combat.results & (DAM_DEAD | DAM_KNOCKED_OUT)) != 0) {
-                    if (!v5 || defender != obj_dude) {
-                        critter_set_who_hit_me(defender, attack->attacker);
-                    }
-                } else if (defender == attack->oops || defender->data.critter.combat.team != attack->attacker->data.critter.combat.team) {
-                    combatai_check_retaliation(defender, attack->attacker);
-                }
+        if (attackerIsCritter) {
+            if ((defender->data.critter.combat.results & (DAM_DEAD | DAM_KNOCKED_OUT)) != 0) {
+                critter_set_who_hit_me(defender, attack->attacker);
+            } else if (defender == attack->oops || defender->data.critter.combat.team != attack->attacker->data.critter.combat.team) {
+                combatai_check_retaliation(defender, attack->attacker);
             }
         }
 
-        scr_set_objs(defender->sid, attack->attacker, attack->weapon);
+        scr_set_objs(defender->sid, attack->attacker, NULL);
         damage_object(defender, attack->defenderDamage, animated, attack->defender != attack->oops, attacker);
-
-        if (defenderIsCritter) {
-            combatai_notify_onlookers(defender);
-        }
+        combatai_notify_onlookers(defender);
 
         if (attack->defenderDamage >= 0 && (attack->attackerFlags & DAM_HIT) != 0) {
             scr_set_objs(attack->attacker->sid, NULL, attack->defender);
@@ -3531,7 +3508,7 @@ void apply_damage(Attack* attack, bool animated)
         if (FID_TYPE(obj->fid) == OBJ_TYPE_CRITTER && (obj->data.critter.combat.results & DAM_DEAD) == 0) {
             set_new_results(obj, attack->extrasFlags[index]);
 
-            if (defenderIsCritter) {
+            if (attackerIsCritter) {
                 if ((obj->data.critter.combat.results & (DAM_DEAD | DAM_KNOCKED_OUT)) != 0) {
                     critter_set_who_hit_me(obj, attack->attacker);
                 } else if (obj->data.critter.combat.team != attack->attacker->data.critter.combat.team) {
@@ -3539,9 +3516,8 @@ void apply_damage(Attack* attack, bool animated)
                 }
             }
 
-            scr_set_objs(obj->sid, attack->attacker, attack->weapon);
-            // TODO: Not sure about defender == oops.
-            damage_object(obj, attack->extrasDamage[index], animated, attack->defender == attack->oops, attack->attacker);
+            scr_set_objs(obj->sid, attack->attacker, NULL);
+            damage_object(obj, attack->extrasDamage[index], animated, attack->defender != attack->oops, attack->attacker);
             combatai_notify_onlookers(obj);
 
             if (attack->extrasDamage[index] >= 0) {
