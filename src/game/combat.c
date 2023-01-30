@@ -66,7 +66,7 @@ static int determine_to_hit_func(Object* attacker, Object* defender, int hitLoca
 static void compute_damage(Attack* attack, int ammoQuantity, int bonusDamageMultiplier);
 static void check_for_death(Object* a1, int a2, int* a3);
 static void set_new_results(Object* a1, int a2);
-static void damage_object(Object* a1, int damage, bool animated, int a4, Object* a5);
+static void damage_object(Object* obj, int damage, bool animated, bool a4);
 static void combat_display_hit(char* dest, Object* critter_obj, int damage);
 static void combat_display_flags(char* a1, int flags, Object* a3);
 static void combat_standup(Object* a1);
@@ -3471,7 +3471,7 @@ void apply_damage(Attack* attack, bool animated)
 
     if (attackerIsCritter && (attacker->data.critter.combat.results & DAM_DEAD) != 0) {
         set_new_results(attacker, attack->attackerFlags);
-        damage_object(attacker, attack->attackerDamage, animated, attack->defender != attack->oops, attacker);
+        damage_object(attacker, attack->attackerDamage, animated, attack->defender != attack->oops);
     }
 
     if (attack->oops != NULL && attack->oops != attack->defender) {
@@ -3493,7 +3493,7 @@ void apply_damage(Attack* attack, bool animated)
         }
 
         scr_set_objs(defender->sid, attack->attacker, NULL);
-        damage_object(defender, attack->defenderDamage, animated, attack->defender != attack->oops, attacker);
+        damage_object(defender, attack->defenderDamage, animated, attack->defender != attack->oops);
         combatai_notify_onlookers(defender);
 
         if (attack->defenderDamage >= 0 && (attack->attackerFlags & DAM_HIT) != 0) {
@@ -3517,7 +3517,7 @@ void apply_damage(Attack* attack, bool animated)
             }
 
             scr_set_objs(obj->sid, attack->attacker, NULL);
-            damage_object(obj, attack->extrasDamage[index], animated, attack->defender != attack->oops, attack->attacker);
+            damage_object(obj, attack->extrasDamage[index], animated, attack->defender != attack->oops);
             combatai_notify_onlookers(obj);
 
             if (attack->extrasDamage[index] >= 0) {
@@ -3579,17 +3579,17 @@ static void set_new_results(Object* critter, int flags)
 }
 
 // 0x422734
-static void damage_object(Object* a1, int damage, bool animated, int a4, Object* a5)
+static void damage_object(Object* obj, int damage, bool animated, bool a4)
 {
-    if (a1 == NULL) {
+    if (obj == NULL) {
         return;
     }
 
-    if (FID_TYPE(a1->fid) != OBJ_TYPE_CRITTER) {
+    if (FID_TYPE(obj->fid) != OBJ_TYPE_CRITTER) {
         return;
     }
 
-    if (a1->pid == 16777224) {
+    if (obj->pid == 16777224) {
         return;
     }
 
@@ -3597,44 +3597,44 @@ static void damage_object(Object* a1, int damage, bool animated, int a4, Object*
         return;
     }
 
-    critter_adjust_hits(a1, -damage);
+    critter_adjust_hits(obj, -damage);
 
-    if (a1 == obj_dude) {
+    if (obj == obj_dude) {
         intface_update_hit_points(animated);
     }
 
-    a1->data.critter.combat.damageLastTurn += damage;
+    obj->data.critter.combat.damageLastTurn += damage;
 
     if (!a4) {
-        exec_script_proc(a1->sid, SCRIPT_PROC_DAMAGE);
+        exec_script_proc(obj->sid, SCRIPT_PROC_DAMAGE);
     }
 
-    if ((a1->data.critter.combat.results & DAM_DEAD) != 0) {
-        scr_set_objs(a1->sid, a1->data.critter.combat.whoHitMe, NULL);
-        exec_script_proc(a1->sid, SCRIPT_PROC_DESTROY);
+    if ((obj->data.critter.combat.results & DAM_DEAD) != 0) {
+        scr_set_objs(obj->sid, obj->data.critter.combat.whoHitMe, NULL);
+        exec_script_proc(obj->sid, SCRIPT_PROC_DESTROY);
 
-        if (a1 != obj_dude) {
-            Object* whoHitMe = a1->data.critter.combat.whoHitMe;
+        if (obj != obj_dude) {
+            Object* whoHitMe = obj->data.critter.combat.whoHitMe;
             if (whoHitMe == obj_dude || (whoHitMe != NULL && whoHitMe->data.critter.combat.team == obj_dude->data.critter.combat.team)) {
                 bool scriptOverrides = false;
                 Script* scr;
-                if (scr_ptr(a1->sid, &scr) != -1) {
+                if (scr_ptr(obj->sid, &scr) != -1) {
                     scriptOverrides = scr->scriptOverrides;
                 }
 
                 if (!scriptOverrides) {
-                    combat_exps += critter_kill_exps(a1);
-                    critter_kill_count_inc(critter_kill_count_type(a1));
+                    combat_exps += critter_kill_exps(obj);
+                    critter_kill_count_inc(critter_kill_count_type(obj));
                 }
             }
         }
 
-        if (a1->sid != -1) {
-            scr_remove(a1->sid);
-            a1->sid = -1;
+        if (obj->sid != -1) {
+            scr_remove(obj->sid);
+            obj->sid = -1;
         }
 
-        partyMemberRemove(a1);
+        partyMemberRemove(obj);
     }
 }
 
