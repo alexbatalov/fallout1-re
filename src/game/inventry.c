@@ -2352,8 +2352,8 @@ int inven_pid_quantity_carried(Object* object, int pid)
 // 0x465264
 void display_stats()
 {
-    // 0x46E6D0
-    static const int v56[7] = {
+    // 0x4623A0
+    static const int stats1[7] = {
         STAT_CURRENT_HIT_POINTS,
         STAT_ARMOR_CLASS,
         STAT_DAMAGE_THRESHOLD,
@@ -2363,8 +2363,8 @@ void display_stats()
         STAT_DAMAGE_THRESHOLD_EXPLOSION,
     };
 
-    // 0x46E6EC
-    static const int v57[7] = {
+    // 0x4623BC
+    static const int stats2[7] = {
         STAT_MAXIMUM_HIT_POINTS,
         -1,
         STAT_DAMAGE_RESISTANCE,
@@ -2426,12 +2426,12 @@ void display_stats()
             text_to_buf(windowBuffer + offset + 40, messageListItem.text, 80, 499, colorTable[992]);
         }
 
-        if (v57[index] == -1) {
-            int value = stat_level(stack[0], v56[index]);
+        if (stats2[index] == -1) {
+            int value = stat_level(stack[0], stats1[index]);
             sprintf(formattedText, "   %d", value);
         } else {
-            int value1 = stat_level(stack[0], v56[index]);
-            int value2 = stat_level(stack[0], v57[index]);
+            int value1 = stat_level(stack[0], stats1[index]);
+            int value2 = stat_level(stack[0], stats2[index]);
             const char* format = index != 0 ? "%d/%d%%" : "%d/%d";
             sprintf(formattedText, format, value1, value2);
         }
@@ -2522,14 +2522,14 @@ void display_stats()
 
         messageListItem.num = 15; // Dmg:
         if (message_search(&inventry_message_file, &messageListItem)) {
-            if (attackType != 4 && range <= 1) {
-                sprintf(formattedText, "%s %d-%d", messageListItem.text, damageMin, damageMax + meleeDamage);
-            } else {
+            if (attackType == ATTACK_TYPE_RANGED || range > 1) {
                 MessageListItem rangeMessageListItem;
                 rangeMessageListItem.num = 16; // Rng:
                 if (message_search(&inventry_message_file, &rangeMessageListItem)) {
                     sprintf(formattedText, "%s %d-%d   %s %d", messageListItem.text, damageMin, damageMax + meleeDamage, rangeMessageListItem.text, range);
                 }
+            } else {
+                sprintf(formattedText, "%s %d-%d", messageListItem.text, damageMin, damageMax + meleeDamage);
             }
 
             text_to_buf(windowBuffer + offset, formattedText, 140, 499, colorTable[992]);
@@ -2544,22 +2544,16 @@ void display_stats()
 
             messageListItem.num = 17; // Ammo:
             if (message_search(&inventry_message_file, &messageListItem)) {
-                if (ammoTypePid != -1) {
-                    if (item_w_curr_ammo(item) != 0) {
-                        const char* ammoName = proto_name(ammoTypePid);
-                        int capacity = item_w_max_ammo(item);
-                        int quantity = item_w_curr_ammo(item);
-                        sprintf(formattedText, "%s %d/%d %s", messageListItem.text, quantity, capacity, ammoName);
-                    } else {
-                        int capacity = item_w_max_ammo(item);
-                        int quantity = item_w_curr_ammo(item);
-                        sprintf(formattedText, "%s %d/%d", messageListItem.text, quantity, capacity);
-                    }
+                if (ammoTypePid != 0) {
+                    const char* ammoName = proto_name(ammoTypePid);
+                    int capacity = item_w_max_ammo(item);
+                    int quantity = item_w_curr_ammo(item);
+                    sprintf(formattedText, "%s %d/%d %s", messageListItem.text, quantity, capacity, ammoName);
+                } else {
+                    int capacity = item_w_max_ammo(item);
+                    int quantity = item_w_curr_ammo(item);
+                    sprintf(formattedText, "%s %d/%d", messageListItem.text, quantity, capacity);
                 }
-            } else {
-                int capacity = item_w_max_ammo(item);
-                int quantity = item_w_curr_ammo(item);
-                sprintf(formattedText, "%s %d/%d", messageListItem.text, quantity, capacity);
             }
 
             text_to_buf(windowBuffer + offset, formattedText, 140, 499, colorTable[992]);
@@ -2571,18 +2565,10 @@ void display_stats()
     // Total wt:
     messageListItem.num = 20;
     if (message_search(&inventry_message_file, &messageListItem)) {
-        if (PID_TYPE(stack[0]->pid) == OBJ_TYPE_CRITTER) {
-            int carryWeight = stat_level(stack[0], STAT_CARRY_WEIGHT);
-            int inventoryWeight = item_total_weight(stack[0]);
-            sprintf(formattedText, "%s %d/%d", messageListItem.text, inventoryWeight, carryWeight);
+        int inventoryWeight = item_total_weight(stack[0]);
+        sprintf(formattedText, "%s %d", messageListItem.text, inventoryWeight);
 
-            text_to_buf(windowBuffer + offset + 15, formattedText, 120, 499, colorTable[992]);
-        } else {
-            int inventoryWeight = item_total_weight(stack[0]);
-            sprintf(formattedText, "%s %d", messageListItem.text, inventoryWeight);
-
-            text_to_buf(windowBuffer + offset + 30, formattedText, 80, 499, colorTable[992]);
-        }
+        text_to_buf(windowBuffer + offset + 30, formattedText, 80, 499, colorTable[992]);
     }
 
     text_font(oldFont);
